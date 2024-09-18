@@ -1,4 +1,6 @@
 Data_ingestion/html_raw_data
 Data_ingestion/.env
+.env
+.venv
 .DS_Store
 Data_ingestion/.ipynb_checkpoints
