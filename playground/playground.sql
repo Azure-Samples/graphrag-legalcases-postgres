@@ -35,15 +35,26 @@ GENERATED ALWAYS AS (
 	  'text-embedding-3-small', -- example deployment name in Azure OpenAI which CONTAINS text-embedding-3-small-model
 	  (data ->> 'name')::text)::vector) STORED;
 
--- What are the most prominent precedents about leaking pipes in apartment buildings
+-- brings 2 out of 5
 SELECT id, data
-FROM cases_playground
-ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'What are the most prominent precedents about leaking pipes in apartment buildings')::vector
+FROM cases
+ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence')::vector
 LIMIT 5;
+
+-- brings one different relevant result
+SELECT id, data
+FROM cases
+ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. failure to repair a leaking roof')::vector
+LIMIT 5;
+
+SELECT data#>> '{name_abbreviation}', data FROM public.cases_metadata
+WHERE id IN ('240463', '1127907', '1729245', '1368181')
+ORDER BY id ASC
+LIMIT 100;
 
 SELECT id, data
 FROM cases
-WHERE jsonb_path_exists(data, '$.citations[*].cite ? (@ == "187 Wash. 2d 346")')
+WHERE jsonb_path_exists(data, '$.citations[*].cite ? (@ == "120 Wn.2d 490")')
 LIMIT 5;
 
 -- Find all cases that are being referenced from other cases in the dataset
