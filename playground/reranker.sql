@@ -17,7 +17,7 @@ FROM cases
 ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above. What are the prominent legal precedents in Washington on this problem?')::vector
 LIMIT 10;
 
-CREATE OR REPLACE FUNCTION generate_json_pairs(query TEXT)
+CREATE OR REPLACE FUNCTION generate_json_pairs(query TEXT, n INT)
 RETURNS jsonb AS $$
 BEGIN
     RETURN (
@@ -31,18 +31,18 @@ BEGIN
             SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
 		    FROM cases
 		    ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', query)::vector
-		    LIMIT 5
+		    LIMIT n
         ) subquery
     );
 END $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION semantic_relevance(query TEXT)
+CREATE OR REPLACE FUNCTION semantic_relevance(query TEXT, n INT)
 RETURNS jsonb AS $$
 DECLARE
     json_pairs jsonb;
 	result_json jsonb;
 BEGIN
-	json_pairs := generate_json_pairs(query);
+	json_pairs := generate_json_pairs(query, n);
 	result_json := azure_ml.invoke(
 				json_pairs,
 				deployment_name=>'bge-reranker-large-hf-1',
@@ -64,12 +64,12 @@ WITH vector AS (
 		SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
 		FROM cases
 		ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence')::vector
-		LIMIT 5)
+		LIMIT 50)
 ),
 result AS (
 	SELECT * 
 	FROM jsonb_array_elements(
-			semantic_relevance('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence')
+			semantic_relevance('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence', 50)
 		) WITH ORDINALITY AS elem(value)
 )
 SELECT vector.ord AS ord, result.value::DOUBLE PRECISION AS value, LEFT(vector.text, 20000)
