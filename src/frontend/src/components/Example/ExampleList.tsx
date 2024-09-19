@@ -4,7 +4,7 @@ import styles from "./Example.module.css";
 
 const DEFAULT_EXAMPLES: string[] = [
     "Water leaking into the apartment from the floor above. What are the prominent legal precedents in Washington on this problem?",
-    "When the landlord is sued in court for leaking pipes, how many times did it result in a favorable decision for the renter?",
+    "When the landlord is sued in court for leaking pipes, how many times did it result in a favorable decision for the lessee?",
 ];
 
 interface Props {
