@@ -47,7 +47,7 @@ FROM cases
 ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. failure to repair a leaking roof')::vector
 LIMIT 5;
 
-SELECT data#>> '{name_abbreviation}', data FROM public.cases_metadata
+SELECT data#>> '{name_abbreviation}', data FROM public.cases
 WHERE id IN ('240463', '1127907', '1729245', '1368181')
 ORDER BY id ASC
 LIMIT 100;

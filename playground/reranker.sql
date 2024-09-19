@@ -56,6 +56,7 @@ SELECT pg_get_functiondef(p.oid)
 FROM pg_proc p
 WHERE proname = 'invoke';
 
+-- Query to use semantic ranker model to rerank the results of vector search
 SELECT generate_json_pairs('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence') AS result_json;
 WITH vector AS (
 	SELECT ROW_NUMBER() OVER () AS ord, text
@@ -76,7 +77,7 @@ FROM vector
 JOIN result ON vector.ord = result.ordinality
 ORDER BY value DESC;
 
-			  
+-- Ignore this - experimental
 SELECT generate_json_pairs('Water leaking into the apartment from the floor above. What are the prominent legal precedents in Washington on this problem?') AS result_json;
 WITH vector AS (
 	SELECT ROW_NUMBER() OVER () AS ord, text
