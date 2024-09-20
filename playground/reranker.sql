@@ -11,11 +11,45 @@ FROM azure_ml.invoke('
     ["what is panda?", "The giant panda (Ailuropoda melanoleuca), sometimes called a panda bear or simply panda, is a bear species endemic to China."]
 ]}', deployment_name=>'bge-reranker-large-hf-1');
 
--- Water leaking into the apartment from the floor above. What are the prominent legal precedents in Washington on this problem?
-SELECT id, data
-FROM cases
-ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above. What are the prominent legal precedents in Washington on this problem?')::vector
-LIMIT 10;
+SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, data
+		FROM cases
+		WHERE data ->> 'name_abbreviation'::text LIKE '%Foisy v. Wyman%';
+		
+-- Fused vector + pagerank results
+CREATE OR REPLACE FUNCTION get_ranked_cases()
+RETURNS TABLE (
+	score			 NUMERIC,
+    pagerank_rank    BIGINT,
+    id               TEXT,
+    vector_rank      BIGINT,
+    abbr             TEXT,
+    pagerank         NUMERIC,
+    data             JSONB
+) AS $$
+DECLARE
+	embedding VECTOR := azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence')::vector;
+BEGIN
+	RETURN QUERY
+	WITH vector AS (
+		SELECT cases.id, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{analysis, pagerank, percentile}')::NUMERIC AS pagerank, cases.data
+		FROM cases
+		ORDER BY description_vector <=> embedding
+		LIMIT 100
+	),
+	combined AS (
+		SELECT RANK() OVER (ORDER BY vector.pagerank DESC) AS pagerank_rank, vector.* FROM vector ORDER BY vector.pagerank DESC
+	)
+	SELECT
+	    COALESCE(1.0 / (60 + combined.vector_rank), 0.0) +
+	    COALESCE(1.0 / (60 + combined.pagerank_rank), 0.0) AS score,
+		combined.*
+	FROM combined
+	ORDER BY score DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_ranked_cases();
+
 
 CREATE OR REPLACE FUNCTION generate_json_pairs(query TEXT, n INT)
 RETURNS jsonb AS $$
@@ -55,10 +89,6 @@ END $$ LANGUAGE plpgsql;
 SELECT pg_get_functiondef(p.oid)
 FROM pg_proc p
 WHERE proname = 'invoke';
-
-SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, data
-		FROM cases
-		WHERE data ->> 'name_abbreviation'::text LIKE '%Esala v. Walker%';
 
 -- Query to use semantic ranker model to rerank the results of vector search
 SELECT generate_json_pairs('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence') AS result_json;
