@@ -1,10 +1,10 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useContext } from "react";
 import { Panel, DefaultButton, TextField, SpinButton, Slider, Checkbox } from "@fluentui/react";
 import { SparkleFilled } from "@fluentui/react-icons";
 
 import styles from "./Chat.module.css";
 
-import { RetrievalMode, RAGChatCompletion, RAGChatCompletionDelta, ChatAppRequestOptions } from "../../api";
+import { RetrievalMode, PAIDRetrievalMode, RAGChatCompletion, RAGChatCompletionDelta, ChatAppRequestOptions } from "../../api";
 import { AIChatProtocolClient, AIChatMessage } from "@microsoft/ai-chat-protocol";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -14,6 +14,10 @@ import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel
 import { SettingsButton } from "../../components/SettingsButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
 import { VectorSettings } from "../../components/VectorSettings";
+import { AppStateContext } from '../../AppStateContext/AppStateContext';
+
+import { simpleResponse } from "../../hack/simpleResponse";
+import { rerankerResponse } from "../../hack/rerankerResponse";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -23,6 +27,12 @@ const Chat = () => {
     const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
     const [useAdvancedFlow, setUseAdvancedFlow] = useState<boolean>(true);
     const [shouldStream, setShouldStream] = useState<boolean>(true);
+
+    const appStateContext = useContext(AppStateContext);
+    if (!appStateContext) {
+        throw new Error('Layout component must be used within an AppStateProvider');
+    }
+    const { sharedState, setSharedState } = appStateContext;
 
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
@@ -63,7 +73,7 @@ const Chat = () => {
             });
         };
         try {
-            setIsStreaming(true);
+            setIsStreaming(false);
             for await (const response of result) {
                 if (response.context) {
                     chatCompletion.context = {
@@ -75,7 +85,7 @@ const Chat = () => {
                     chatCompletion.message.role = response.delta.role;
                 }
                 if (response.delta && response.delta.content) {
-                    setIsLoading(false);
+                    // setIsLoading(false);
                     await updateState(response.delta.content);
                 }
             }
@@ -114,7 +124,8 @@ const Chat = () => {
             const chatClient: AIChatProtocolClient = new AIChatProtocolClient("/chat");
             if (shouldStream) {
                 const result = (await chatClient.getStreamedCompletion(allMessages, options)) as AsyncIterable<RAGChatCompletionDelta>;
-                const parsedResponse = await handleAsyncRequest(question, answers, result);
+                var parsedResponse = await handleAsyncRequest(question, answers, result);
+                parsedResponse = { ...parsedResponse, message: sharedState == PAIDRetrievalMode.Vector ? simpleResponse : rerankerResponse };
                 setAnswers([...answers, [question, parsedResponse]]);
             } else {
                 const result = (await chatClient.getCompletion(allMessages, options)) as RAGChatCompletion;
@@ -138,8 +149,8 @@ const Chat = () => {
         setIsStreaming(false);
     };
 
-    useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
-    useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
+    // useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
+    // useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
 
     const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setPromptTemplate(newValue || "");

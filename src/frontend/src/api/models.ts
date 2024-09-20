@@ -6,6 +6,12 @@ export const enum RetrievalMode {
     Text = "text"
 }
 
+export const enum PAIDRetrievalMode {
+    Vector = "Vector Search",
+    Semantic = "Semantic Ranker",
+    GraphRAG = "GraphRAG"
+}
+
 export type ChatAppRequestOverrides = {
     use_advanced_flow?: boolean;
     retrieval_mode?: RetrievalMode;

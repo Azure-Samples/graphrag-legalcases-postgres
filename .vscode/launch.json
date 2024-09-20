@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "type": "msedge",
+            "name": "http://127.0.0.1:5173/#/",
+            "request": "launch",
+            "url": "http://127.0.0.1:5173/#/",
+            "webRoot": "${workspaceFolder}/src/frontend",
+            "resolveSourceMapLocations": [
+                "${workspaceFolder}/**",
+                "!**/node_modules/**"
+            ],
+        }
+    ]
+}

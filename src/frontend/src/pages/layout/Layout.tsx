@@ -1,12 +1,26 @@
 import { Outlet, Link } from "react-router-dom";
 import { SetStateAction, useState } from "react";
 import styles from "./Layout.module.css";
+import { PAIDRetrievalMode } from "../../api";
+import React, { useContext } from 'react';
+import { AppStateContext } from '../../AppStateContext/AppStateContext';
+
+interface RetrievalModeProps {
+    updatePAIDRetrievalMode: (retrievalMode: PAIDRetrievalMode) => void;
+}
 
 const Layout = () => {
     const [selectedMode, setSelectedMode] = useState("Vector Search");
+    const appStateContext = useContext(AppStateContext);
+    if (!appStateContext) {
+        throw new Error('Layout component must be used within an AppStateProvider');
+    }
+    const { sharedState, setSharedState } = appStateContext;
 
     const handleModeChange = (event: { target: { value: SetStateAction<string>; }; }) => {
         setSelectedMode(event.target.value);
+        console.log("handleModeChange: " + (event.target.value as PAIDRetrievalMode).toString());
+        setSharedState((prev: any) => (event.target.value as PAIDRetrievalMode));
     };
 
     return (
