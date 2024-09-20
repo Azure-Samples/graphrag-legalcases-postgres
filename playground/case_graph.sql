@@ -1,11 +1,11 @@
 LOAD 'age';
 SET search_path = ag_catalog, "$user", public;
-SELECT create_graph('case_playgroun_graph');
+SELECT create_graph('case_playground_graph');
 
 WITH cases_data AS (
   SELECT id FROM cases_playground
 )
-SELECT * FROM cypher('case_playgroun_graph', $$
+SELECT * FROM cypher('case_playground_graph', $$
     UNWIND $cases_data AS row
     CREATE (e:Case {id: row.id})
     RETURN e.id
@@ -20,7 +20,7 @@ BEGIN
         SELECT id FROM cases_playground
     LOOP
         -- Step 2: Execute Cypher query for each record
-        PERFORM ag_catalog.cypher('case_playgroun_graph', $$
+        PERFORM ag_catalog.cypher('case_playground_graph', $$
             CREATE (c:Case {id: $1})
             RETURN c
         $$, case_record.id::int);
