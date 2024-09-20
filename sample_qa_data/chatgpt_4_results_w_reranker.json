@@ -1,0 +1,76 @@
+{
+  "id": "chatcmpl-A9MrKA70Ol2fLAjSmqLW2JhhbvHwA",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "The provided text contains numerous excerpts from legal cases related to landlord-tenant disputes, but it does not include specific information on how many times landlords have been sued for leaking pipes or how many such cases resulted in favorable decisions for lessees. To accurately determine the number of such cases and outcomes, one would need access to a comprehensive database of court decisions or legal records focusing on landlord-tenant disputes involving leaking pipes. The text mostly contains details of individual cases and various legal principles without specific aggregation of such data.",
+        "role": "assistant"
+      },
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "protected_material_code": {
+          "filtered": false,
+          "detected": false
+        },
+        "protected_material_text": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ],
+  "created": 1726796186,
+  "model": "gpt-4o-2024-05-13",
+  "object": "chat.completion",
+  "system_fingerprint": "fp_80a1bad4c7",
+  "usage": {
+    "completion_tokens": 102,
+    "prompt_tokens": 124036,
+    "total_tokens": 124138
+  },
+  "prompt_filter_results": [
+    {
+      "prompt_index": 0,
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "jailbreak": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ]
+}
