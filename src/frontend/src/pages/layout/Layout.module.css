@@ -25,6 +25,27 @@
     text-decoration: none;
 }
 
+.radioContainer {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.radioContainer label {
+    display: flex;
+    gap: 5px;
+    padding: 5px;
+}
+
+.radioInput {
+    transform: scale(1.5); /* Increase the size of the radio button */
+    margin-right: 5px;
+}
+
+.radioInput:checked {
+    accent-color: #007BFF; /* Customize the color of the selected radio button */
+}
+
 .headerLogo {
     height: 40px;
 }
