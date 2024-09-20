@@ -56,23 +56,28 @@ SELECT pg_get_functiondef(p.oid)
 FROM pg_proc p
 WHERE proname = 'invoke';
 
+SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, data
+		FROM cases
+		WHERE data ->> 'name_abbreviation'::text LIKE '%Esala v. Walker%';
+
 -- Query to use semantic ranker model to rerank the results of vector search
 SELECT generate_json_pairs('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence') AS result_json;
 WITH vector AS (
-	SELECT ROW_NUMBER() OVER () AS ord, text
+	SELECT ROW_NUMBER() OVER () AS ord, text, data
 	FROM (
-		SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
+		SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, data
 		FROM cases
 		ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence')::vector
-		LIMIT 50)
+		LIMIT 5)
 ),
 result AS (
 	SELECT * 
 	FROM jsonb_array_elements(
-			semantic_relevance('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence', 50)
+			semantic_relevance('Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence',
+			5)
 		) WITH ORDINALITY AS elem(value)
 )
-SELECT vector.ord AS ord, result.value::DOUBLE PRECISION AS value, LEFT(vector.text, 20000)
+SELECT vector.ord AS ord, result.value::DOUBLE PRECISION AS value, data->>'name_abbreviation', LEFT(vector.text, 20000), data
 FROM vector
 JOIN result ON vector.ord = result.ordinality
 ORDER BY value DESC;

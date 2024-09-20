@@ -40,16 +40,18 @@ export const Answer = ({
             <Stack.Item>
                 <Stack horizontal horizontalAlign="space-between">
                     <AnswerIcon />
-                    <div>
-                        <IconButton
-                            style={{ color: "black" }}
-                            iconProps={{ iconName: "Lightbulb" }}
-                            title="Show thought process"
-                            ariaLabel="Show thought process"
-                            onClick={() => onThoughtProcessClicked()}
-                            disabled={!answer.context.thoughts?.length}
-                        />
-                    </div>
+                    { false && (
+                        <div>
+                            <IconButton
+                                style={{ color: "black" }}
+                                iconProps={{ iconName: "Lightbulb" }}
+                                title="Show thought process"
+                                ariaLabel="Show thought process"
+                                onClick={() => onThoughtProcessClicked()}
+                                disabled = {!answer.context.thoughts?.length}
+                            />
+                        </div>
+                    )}
                 </Stack>
             </Stack.Item>
 
