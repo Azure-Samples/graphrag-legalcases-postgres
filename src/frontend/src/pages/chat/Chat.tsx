@@ -18,6 +18,7 @@ import { AppStateContext } from '../../AppStateContext/AppStateContext';
 
 import { simpleResponse } from "../../hack/simpleResponse";
 import { rerankerResponse } from "../../hack/rerankerResponse";
+import { graphResponse } from "../../hack/graphResponse";
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -125,7 +126,24 @@ const Chat = () => {
             if (shouldStream) {
                 const result = (await chatClient.getStreamedCompletion(allMessages, options)) as AsyncIterable<RAGChatCompletionDelta>;
                 var parsedResponse = await handleAsyncRequest(question, answers, result);
-                parsedResponse = { ...parsedResponse, message: sharedState == PAIDRetrievalMode.Vector ? simpleResponse : rerankerResponse };
+
+                switch (sharedState)
+                {
+                    case PAIDRetrievalMode.Vector:
+                        parsedResponse = { ...parsedResponse, message: simpleResponse };
+                        break;
+
+                    case PAIDRetrievalMode.Semantic:
+                        parsedResponse = { ...parsedResponse, message: rerankerResponse };
+                        break;
+
+                    case PAIDRetrievalMode.GraphRAG:
+                        parsedResponse = { ...parsedResponse, message: graphResponse };
+                        break;
+                }
+
+                //parsedResponse = { ...parsedResponse, message: sharedState == PAIDRetrievalMode.Vector ? simpleResponse : rerankerResponse };
+
                 setAnswers([...answers, [question, parsedResponse]]);
             } else {
                 const result = (await chatClient.getCompletion(allMessages, options)) as RAGChatCompletion;
