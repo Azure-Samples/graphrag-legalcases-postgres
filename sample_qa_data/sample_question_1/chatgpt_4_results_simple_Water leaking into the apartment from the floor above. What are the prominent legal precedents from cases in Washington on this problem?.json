@@ -1,0 +1,76 @@
+{
+  "id": "chatcmpl-AA0dPRYzkLhFPRd7BcLWDcIn2LCZq",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "The prominent legal precedents from cases in Washington on the issue of water leaking into an apartment from the floor above, as found in the provided DOCUMENT, are:\n\n1. **Mickele D. O'Brien v. Martin Detty (1978)**:\n   - This case established that a landlord must have timely notice of the need for repairs before being obliged to make them. The landlord is given a reasonable time to effectuate those repairs. If the landlord fails to repair the defect within this reasonable period and damage results, the landlord may be held liable.\n\n2. **United Mutual Savings Bank v. Arthur Riebli (1960)**:\n   - This case indicated that exclusive control over the offending instrumentality must be established by evidence to apply the doctrine of res ipsa loquitur. In this case, the court ruled that the landlord did not have exclusive control over the pipe causing the water damage, thus not meeting the criteria for res ipsa loquitur.\n\n3. **R. T. Dempsey v. The City of Seattle (1936)**:\n   - This case illustrated that claims for damages must be presented within a specified time frame after the damage occurred. The court held that the subsequent subsidence of the house due to a water main break was not noticed until later, but the initial damage started when the main broke, impacting the claim's timeliness.\n\nThese cases highlight the importance of timely notification, reasonable repair time, and the determination of control and responsibility in addressing water damage issues within properties.",
+        "role": "assistant"
+      },
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "protected_material_code": {
+          "filtered": false,
+          "detected": false
+        },
+        "protected_material_text": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ],
+  "created": 1726949083,
+  "model": "gpt-4o-2024-05-13",
+  "object": "chat.completion",
+  "system_fingerprint": "fp_67802d9a6d",
+  "usage": {
+    "completion_tokens": 305,
+    "prompt_tokens": 75490,
+    "total_tokens": 75795
+  },
+  "prompt_filter_results": [
+    {
+      "prompt_index": 0,
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "jailbreak": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ]
+}

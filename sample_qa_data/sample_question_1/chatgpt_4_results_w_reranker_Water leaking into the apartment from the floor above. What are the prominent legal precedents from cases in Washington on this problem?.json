@@ -1,0 +1,76 @@
+{
+  "id": "chatcmpl-AA0gJkLgBnxc4z57vjfpFK46sSsDS",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "The prominent legal precedents from cases in Washington regarding water leaking into an apartment from the floor above include:\n\n1. **O'Brien v. Detty**:\n   - **Issue**: Whether a landlord is liable for injuries resulting from a defective condition (water leak) if they were notified and failed to remedy the defect within a reasonable time.\n   - **Legal Principle**: Under the Residential Landlord-Tenant Act of 1973, RCW 59.18, landlords are required to maintain a dwelling in reasonably weathertight condition. The landlord must have timely notice of the defect and must repair it within a reasonable time (RCW 59.18.060(8); RCW 59.18.070). Negligence may be established if the landlord fails to act within this time frame.\n   - **Outcome**: The case emphasizes the landlord’s obligation to address defects in a timely manner after being notified by the tenant.\n\n2. **Puget Sound Service Corp. v. Dalarna Management Corp.**:\n   - **Issue**: Whether a seller (landlord) is liable for non-disclosure of extensive water leakage issues.\n   - **Legal Principle**: Constructive fraud by nondisclosure applies when the seller knows of a defect and fails to disclose it, and the defect is not apparent or readily ascertainable to the buyer. \n   - **Outcome**: The court held that buyers have a duty to inquire about known problems if there is evidence of water penetration, and sellers may be liable if they fail to disclose significant defects not readily apparent.\n\nThese cases provide a framework for understanding the responsibilities of landlords in Washington regarding water leaks and the importance of timely repairs and disclosures.",
+        "role": "assistant"
+      },
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "protected_material_code": {
+          "filtered": false,
+          "detected": false
+        },
+        "protected_material_text": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ],
+  "created": 1726949263,
+  "model": "gpt-4o-2024-05-13",
+  "object": "chat.completion",
+  "system_fingerprint": "fp_80a1bad4c7",
+  "usage": {
+    "completion_tokens": 348,
+    "prompt_tokens": 106137,
+    "total_tokens": 106485
+  },
+  "prompt_filter_results": [
+    {
+      "prompt_index": 0,
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "jailbreak": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "id": "chatcmpl-AA0iRVxzn2koGPSMkQ8NWI19l8W3u",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "Based on the provided DOCUMENT text, the prominent legal precedent from cases in Washington that involves water leaking into an apartment is from the case **Wilber Development Corporation v. Les Rowland Constr., Inc., et al.** The case summary includes a specific instance where the plaintiff claimed damages due to water being collected and discharged upon their land from storm sewers:\n\n1. **Wilber Development Corporation v. Les Rowland Constr., Inc., et al.**\n   - **Citation**: 83 Wash. 2d 871\n   - **Facts**: The plaintiff owned 61.3 acres of land and alleged that the defendants (developers and government entities) caused an increase in surface water flow due to storm drainage facilities constructed in conjunction with nearby subdivisions, which resulted in property damage.\n   - **Legal Principle**: The court held that a municipality could be liable if it collects surface water by artificial means and discharges it onto an owner's land in a manner different from the natural flow, causing substantial injury. The case clarified that surface waters may not be artificially collected and discharged upon adjoining lands in quantities greater than or in a manner different from the natural flow thereof (citing earlier cases like King County v. Boeing Co. and Colella v. King County).\n\nThis precedent would be significant in a situation where water from an apartment above leaks into a lower apartment, implicating the responsible party for potentially creating or failing to manage an artificial means (like plumbing or drainage systems) that leads to damage. It aligns with the principle that artificially altering the natural flow of water and causing damage could result in liability for the party responsible for such an alteration.",
+        "role": "assistant"
+      },
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "protected_material_code": {
+          "filtered": false,
+          "detected": false
+        },
+        "protected_material_text": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ],
+  "created": 1726949395,
+  "model": "gpt-4o-2024-05-13",
+  "object": "chat.completion",
+  "system_fingerprint": "fp_67802d9a6d",
+  "usage": {
+    "completion_tokens": 333,
+    "prompt_tokens": 76668,
+    "total_tokens": 77001
+  },
+  "prompt_filter_results": [
+    {
+      "prompt_index": 0,
+      "content_filter_results": {
+        "hate": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "jailbreak": {
+          "filtered": false,
+          "detected": false
+        },
+        "self_harm": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "sexual": {
+          "filtered": false,
+          "severity": "safe"
+        },
+        "violence": {
+          "filtered": false,
+          "severity": "safe"
+        }
+      }
+    }
+  ]
+}
