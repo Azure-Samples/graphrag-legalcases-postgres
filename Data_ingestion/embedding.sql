@@ -47,7 +47,7 @@ BEGIN
             SELECT id
             FROM cases
 			where description_vector is null
-            ORDER BY id
+            ORDER BY id ASC
             LIMIT batch_size
             OFFSET offset1
         );
