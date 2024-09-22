@@ -16,7 +16,8 @@ SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, data
 		WHERE data ->> 'name_abbreviation'::text LIKE '%Foisy v. Wyman%';
 		
 -- Fused vector + pagerank results
-CREATE OR REPLACE FUNCTION get_ranked_cases()
+-- Target question: Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence
+CREATE OR REPLACE FUNCTION get_vector_pagerank_rrf_cases(query TEXT, top_n INT, consider_n INT)
 RETURNS TABLE (
 	score			 NUMERIC,
     pagerank_rank    BIGINT,
@@ -27,14 +28,15 @@ RETURNS TABLE (
     data             JSONB
 ) AS $$
 DECLARE
-	embedding VECTOR := azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence')::vector;
+	embedding VECTOR := azure_openai.create_embeddings('text-embedding-3-small', query)::vector;
 BEGIN
 	RETURN QUERY
 	WITH vector AS (
 		SELECT cases.id, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{analysis, pagerank, percentile}')::NUMERIC AS pagerank, cases.data
 		FROM cases
+		WHERE (cases.data#>>'{court, id}')::integer IN (9029) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
 		ORDER BY description_vector <=> embedding
-		LIMIT 100
+		LIMIT consider_n
 	),
 	combined AS (
 		SELECT RANK() OVER (ORDER BY vector.pagerank DESC) AS pagerank_rank, vector.* FROM vector ORDER BY vector.pagerank DESC
@@ -44,12 +46,17 @@ BEGIN
 	    COALESCE(1.0 / (60 + combined.pagerank_rank), 0.0) AS score,
 		combined.*
 	FROM combined
-	ORDER BY score DESC;
+	ORDER BY score DESC
+	LIMIT top_n;
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT * FROM get_ranked_cases();
+SELECT * FROM get_vector_pagerank_rrf_cases('Water leaking into the apartment from the floor above causing damages to the property.',
+				50, 50);
 
+SELECT * FROM get_vector_pagerank_rrf_cases('Water leaking into the apartment from the floor above.',
+				50, 50);
+				
 
 CREATE OR REPLACE FUNCTION generate_json_pairs(query TEXT, n INT)
 RETURNS jsonb AS $$

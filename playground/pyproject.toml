@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "playground"
+version = "0.1.0"
+description = ""
+authors = ["Maxim Lukiyanov <4074306+maxluk@users.noreply.github.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+tiktoken = "^0.7.0"
+ipykernel = "^6.29.5"
+environs = "^11.0.0"
+sshtunnel = "^0.4.0"
+python-decouple = "^3.8"
+psycopg = "^3.2.2"
+pandas = "^2.2.3"
+openai = "^1.47.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
