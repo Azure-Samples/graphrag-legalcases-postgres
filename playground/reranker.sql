@@ -58,6 +58,178 @@ SELECT * FROM get_vector_pagerank_rrf_cases('Water leaking into the apartment fr
 				50, 50);
 				
 
+DROP FUNCTION get_vector_pagerank_rrf_rerank3way_cases(text,integer,integer);
+-- Fused vector + pagerank + reranker + 3 way RRF results
+CREATE OR REPLACE FUNCTION get_vector_pagerank_rrf_rerank3way_cases(query TEXT, top_n INT, consider_n INT)
+RETURNS TABLE (
+	score			 NUMERIC,
+    pagerank_rank    BIGINT,
+	relevance 		 DOUBLE PRECISION,
+	semantic_rank    BIGINT,
+    id               TEXT,
+    vector_rank      BIGINT,
+    abbr             TEXT,
+    pagerank         NUMERIC,
+    data             JSONB
+) AS $$
+DECLARE
+	embedding VECTOR := azure_openai.create_embeddings('text-embedding-3-small', query)::vector;
+BEGIN
+	RETURN QUERY
+	WITH vector AS (
+		SELECT cases.id, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{analysis, pagerank, percentile}')::NUMERIC AS pagerank, cases.data
+		FROM cases
+		WHERE (cases.data#>>'{court, id}')::integer IN (9029) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+			  AND pagerank IS NOT NULL
+		ORDER BY description_vector <=> embedding
+		LIMIT consider_n
+	),
+	result AS (
+		SELECT * 
+		FROM jsonb_array_elements(
+				semantic_relevance(query,
+				consider_n)
+			) WITH ORDINALITY AS elem(relevance)
+	),
+	semantic_ranked AS (
+		SELECT result.relevance::DOUBLE PRECISION AS relevance, RANK() OVER (ORDER BY result.relevance::DOUBLE PRECISION DESC) AS semantic_rank, vector.*
+		FROM vector
+		JOIN result ON vector.vector_rank = result.ordinality
+		ORDER BY relevance DESC
+	),
+	graph_ranked AS (
+		SELECT RANK() OVER (ORDER BY semantic_ranked.pagerank DESC) AS pagerank_rank, semantic_ranked.* 
+		FROM semantic_ranked ORDER BY semantic_ranked.pagerank DESC
+	),
+	rrf AS (
+		SELECT
+		    COALESCE(1.0 / (60 + graph_ranked.vector_rank), 0.0) +
+		    COALESCE(1.0 / (60 + graph_ranked.pagerank_rank), 0.0) +
+			COALESCE(1.0 / (60 + graph_ranked.semantic_rank), 0.0) AS score,
+			graph_ranked.*
+		FROM graph_ranked
+		ORDER BY score DESC
+		LIMIT top_n
+	)
+	SELECT * 
+	FROM rrf
+	ORDER BY relevance;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fused vector + reranker + pagerank + RRF(semantic, pagerank) results
+CREATE OR REPLACE FUNCTION get_vector_rerank_pagerank_rrf2_cases(query TEXT, top_n INT, consider_n INT)
+RETURNS TABLE (
+	score			 NUMERIC,
+    pagerank_rank    BIGINT,
+	relevance 		 DOUBLE PRECISION,
+	semantic_rank    BIGINT,
+    id               TEXT,
+    vector_rank      BIGINT,
+    abbr             TEXT,
+    pagerank         NUMERIC,
+    data             JSONB
+) AS $$
+DECLARE
+	embedding VECTOR := azure_openai.create_embeddings('text-embedding-3-small', query)::vector;
+BEGIN
+	RETURN QUERY
+	WITH vector AS (
+		SELECT cases.id, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{analysis, pagerank, percentile}')::NUMERIC AS pagerank, cases.data
+		FROM cases
+		WHERE (cases.data#>>'{court, id}')::integer IN (9029) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+		ORDER BY description_vector <=> embedding
+		LIMIT consider_n
+	),
+	result AS (
+		SELECT * 
+		FROM jsonb_array_elements(
+				semantic_relevance(query,
+				consider_n)
+			) WITH ORDINALITY AS elem(relevance)
+	),
+	semantic_ranked AS (
+		SELECT result.relevance::DOUBLE PRECISION AS relevance, RANK() OVER (ORDER BY result.relevance::DOUBLE PRECISION DESC) AS semantic_rank, vector.*
+		FROM vector
+		JOIN result ON vector.vector_rank = result.ordinality
+		ORDER BY relevance DESC
+	),
+	graph_ranked AS (
+		SELECT RANK() OVER (ORDER BY semantic_ranked.pagerank DESC) AS pagerank_rank, semantic_ranked.* 
+		FROM semantic_ranked ORDER BY semantic_ranked.pagerank DESC
+	),
+	rrf AS (
+		SELECT
+		    COALESCE(1.0 / (60 + graph_ranked.pagerank_rank), 0.0) +
+			COALESCE(1.0 / (60 + graph_ranked.semantic_rank), 0.0) AS score,
+			graph_ranked.*
+		FROM graph_ranked
+		ORDER BY score DESC
+		LIMIT top_n
+	)
+	SELECT * 
+	FROM rrf;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fused vector + reranker + pagerank + RRF(semantic, pagerank) results
+CREATE OR REPLACE FUNCTION get_vector_rerank_pagerank_rrf2_cases_v2(query TEXT, top_n INT, consider_n INT)
+RETURNS TABLE (
+	score			 NUMERIC,
+    pagerank_rank    BIGINT,
+	relevance 		 DOUBLE PRECISION,
+	semantic_rank    BIGINT,
+    id               TEXT,
+    vector_rank      BIGINT,
+    abbr             TEXT,
+    pagerank         NUMERIC,
+    data             JSONB
+) AS $$
+DECLARE
+	embedding VECTOR := azure_openai.create_embeddings('text-embedding-3-small', query)::vector;
+BEGIN
+	RETURN QUERY
+	WITH vector AS (
+		SELECT cases.id, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{analysis, pagerank, percentile}')::NUMERIC AS pagerank, cases.data
+		FROM cases
+		WHERE (cases.data#>>'{court, id}')::integer IN (9029, 8985) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+		ORDER BY description_vector <=> embedding
+		LIMIT consider_n
+	),
+	result AS (
+		SELECT * 
+		FROM jsonb_array_elements(
+				semantic_relevance(query,
+				consider_n)
+			) WITH ORDINALITY AS elem(relevance)
+	),
+	semantic_ranked AS (
+		SELECT result.relevance::DOUBLE PRECISION AS relevance, RANK() OVER (ORDER BY result.relevance::DOUBLE PRECISION DESC) AS semantic_rank, vector.*
+		FROM vector
+		JOIN result ON vector.vector_rank = result.ordinality
+		ORDER BY relevance DESC
+	),
+	graph_ranked AS (
+		SELECT RANK() OVER (ORDER BY semantic_ranked.pagerank DESC) AS pagerank_rank, semantic_ranked.* 
+		FROM semantic_ranked ORDER BY semantic_ranked.pagerank DESC
+	),
+	rrf AS (
+		SELECT
+		    COALESCE(1.0 / (60 + graph_ranked.pagerank_rank), 0.0) +
+			COALESCE(1.0 / (60 + graph_ranked.semantic_rank), 0.0) AS score,
+			graph_ranked.*
+		FROM graph_ranked
+		ORDER BY score DESC
+		LIMIT top_n
+	)
+	SELECT * 
+	FROM rrf;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_vector_rerank_pagerank_rrf2_cases('Water leaking into the apartment from the floor above.', 
+                50, 50);
+				
 CREATE OR REPLACE FUNCTION generate_json_pairs(query TEXT, n INT)
 RETURNS jsonb AS $$
 BEGIN
@@ -71,6 +243,7 @@ BEGIN
         FROM (
             SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
 		    FROM cases
+			WHERE (cases.data#>>'{court, id}')::integer IN (9029) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
 		    ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', query)::vector
 		    LIMIT n
         ) subquery
