@@ -13,7 +13,7 @@ FROM azure_ml.invoke('
 
 SELECT data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, data
 		FROM cases
-		WHERE data ->> 'name_abbreviation'::text LIKE '%Foisy v. Wyman%';
+		WHERE data ->> 'name_abbreviation'::text LIKE '%Geise v. Lee%';
 		
 -- Fused vector + pagerank results
 -- Target question: Water leaking into the apartment from the floor above causing damages to the property. water damage caused by negligence
@@ -171,6 +171,12 @@ BEGIN
 	FROM rrf;
 END;
 $$ LANGUAGE plpgsql;
+
+SELECT cases.id, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{analysis, pagerank, percentile}')::NUMERIC AS pagerank, cases.data
+		FROM cases
+		WHERE (cases.data#>>'{court, id}')::integer IN (9029) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+		ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above.')::vector
+		LIMIT 55;
 
 -- Fused vector + reranker + pagerank + RRF(semantic, pagerank) results
 CREATE OR REPLACE FUNCTION get_vector_rerank_pagerank_rrf2_cases_v2(query TEXT, top_n INT, consider_n INT)
