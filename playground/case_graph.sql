@@ -1,5 +1,32 @@
 LOAD 'age';
 SET search_path = ag_catalog, "$user", public;
+
+-- search
+SELECT * from cypher('graph_name', $$
+            MATCH (n:label)
+            RETURN n
+        $$) as (n agtype);
+
+
+SELECT * from cypher('graph_name', $$
+            MATCH (n {property:"Node B"})
+            RETURN n
+        $$) as (n agtype);
+
+SELECT * from cypher('graph_name', $$
+            MATCH ()-[r]->(n {property:"Node A"})
+            RETURN COUNT(r) AS refs
+        $$) as (refs BIGINT);
+
+SELECT * from cypher('graph_name', $$
+            MATCH ()-[r]->(n)
+			WHERE n.property IN ["Node A", "Node B"]
+            RETURN n.property, COUNT(r) AS refs
+        $$) as (node TEXT, refs BIGINT);
+
+
+
+-- creation
 SELECT create_graph('case_playground_graph');
 
 WITH cases_data AS (
