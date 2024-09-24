@@ -5,7 +5,8 @@
 # %pip install pgvector
 # %pip install python-dotenv
 
-already_done = ['a2d','a3d','abb-ct-app','abb-pr','abb-pr-ns','abbn-cas','ad','ad2d','ad3d','add','aik',
+# %%
+ALL_REPORTERS = ['a2d','a3d','abb-ct-app','abb-pr','abb-pr-ns','abbn-cas','ad','ad2d','ad3d','add','aik',
                  'ala','ala-app','alaska','alaska-fed','am-samoa','am-samoa-2d','am-samoa-3d','am-tribal-law',
                  'ant-np-cas','app-dc','ariz','ariz-app','ark','ark-app','ark-terr-rep','armstrong-election-cases',
                  'balt-c-rep','barb','barb-ch','binn','blackf','bland','blume-sup-ct-trans','blume-unrep-op','br',
@@ -25,9 +26,7 @@ already_done = ['a2d','a3d','abb-ct-app','abb-pr','abb-pr-ns','abbn-cas','ad','a
                  'ill-ct-cl','ind','ind-app','ind-l-rep','indian-terr','iowa','jeff','johns','johns-cas','johns-ch',
                  'kan','kan-app','kan-app-2d','keyes','kirby','ky','ky-op','l-ed-2d','la','la-ann','la-app','lans',
                  'lans-ch','law-times-ns','liquor-tax-rep','lock-rev-cas','mann-unrep-cas','mart-ns','mart-os',
-                 'mass']
-# %%
-ALL_REPORTERS = ['mass-app-ct','mass-app-dec','mass-app-div','mass-app-div-annual','mass-l-rptr','mass-supp',
+                 'mass','mass-app-ct','mass-app-dec','mass-app-div','mass-app-div-annual','mass-l-rptr','mass-supp',
                  'mccahon','mcgl','mcgrath','md','md-app','md-ch','me','mich','mich-app','mich-np-r','mich-pr',
                  'miles','mills-surr','minn','minor','misc','misc2d','misc3d','miss','miss-dec','miss-s-m-ch','mj',
                  'mo','mo-app','monaghan','mont','mor-st-cas','morris','myrick','n-chip','n-mar-i','n-mar-i-commw',
@@ -50,7 +49,7 @@ ALL_REPORTERS = ['mass-app-ct','mass-app-dec','mass-app-div','mass-app-div-annua
                  'vet-app','vi','vt','w-va','walk-ch','walker','wash','wash-2d','wash-app','wash-terr','watts',
                  'watts-serg','wend','whart','wheel-cr-cas','white-w','willson','wilson','wis','wis-2d','wright',
                  'wv-ct-cl','wyo','yeates']
-ALL_REPORTERS = ['us-app-dc','us-ct-cl','us']
+
 REPORTER = "wash-2d"
 
 
@@ -203,11 +202,14 @@ conn = get_db_connection()
 conn.autocommit = True
 register_vector(conn)
 cur = conn.cursor()
+
 # Fetch descriptions from the listings table
+
 # Create the reporters table
 # cur.execute("""
 # DROP TABLE volumes
 #  """)
+
 cur.execute("""
 CREATE TABLE IF NOT EXISTS volumes(
 	id text primary key unique,
@@ -216,33 +218,34 @@ CREATE TABLE IF NOT EXISTS volumes(
 	data jsonb
 );
 """)
-# conn.commit()
+conn.commit()
+
 # Fetch the data from the URL
 
-# for reporter in ALL_REPORTERS:
-#     url = f"https://static.case.law/{reporter}/VolumesMetadata.json"
-#     response = requests.get(url)
-#     data = response.json()
-#     #print(url)
-#     #print(json.dumps(data))
+for reporter in ALL_REPORTERS:
+    url = f"https://static.case.law/{reporter}/VolumesMetadata.json"
+    response = requests.get(url)
+    data = response.json()
+    #print(url)
+    #print(json.dumps(data))
     
-#     # Insert the data into the reporters table
+    # Insert the data into the reporters table
 
-#     for item in data:
-#         # Insert the data into the reporters table
-#         cur.execute("SELECT 1 FROM volumes WHERE id = %s", (str(item.get("id")),))
-#         if cur.fetchone():
-#             print(url)
-#             continue
-#         else:
-#             print(url)
-#             print(item)
-#             volume_number = int(''.join(filter(str.isdigit, item.get("volume_number"))))
-#             cur.execute("INSERT INTO volumes (id, volume_number, reporter_slug, data) VALUES (%s, %s, %s, %s)", (item.get("id"), volume_number, item.get("reporter_slug"), json.dumps(item)))
-#     conn.commit()
+    for item in data:
+        # Insert the data into the reporters table
+        cur.execute("SELECT 1 FROM volumes WHERE id = %s", (str(item.get("id")),))
+        if cur.fetchone():
+            print(url)
+            continue
+        else:
+            print(url)
+            print(item)
+            volume_number = int(''.join(filter(str.isdigit, item.get("volume_number"))))
+            cur.execute("INSERT INTO volumes (id, volume_number, reporter_slug, data) VALUES (%s, %s, %s, %s)", (item.get("id"), volume_number, item.get("reporter_slug"), json.dumps(item)))
+    conn.commit()
 
 # # Close the cursor and connection
-# cur.close()
+cur.close()
 
 # %% [markdown]
 # ## Create reporter Table
@@ -255,34 +258,38 @@ conn = get_db_connection()
 conn.autocommit = True
 register_vector(conn)
 cur = conn.cursor()
+
 # Fetch descriptions from the listings table
 # Create the reporters table
+
 # cur.execute("""
 # DROP TABLE reporters
 # """)
-# cur.execute("""
-# CREATE TABLE IF NOT EXISTS reporters(
-# 	id text primary key,
-# 	data jsonb
-# );
-# """)
-# conn.commit()
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS reporters(
+	id text primary key,
+	data jsonb
+);
+""")
+conn.commit()
 # Fetch the data from the URL
 
 
-# for reporter in ALL_REPORTERS:
-#     url = f"https://static.case.law/{reporter}/ReporterMetadata.json"
-#     response = requests.get(url)
-#     data = response.json()
-#     #print(json.dumps(data))
-#     #print(data.get("id"))
-#     # Insert the data into the reporters table
-#     cur.execute("SELECT 1 FROM reporters WHERE id = %s", (str(data.get("id")),))
-#     if cur.fetchone():
-#         print(url)
-#     else:
-#         cur.execute("INSERT INTO reporters (id, data) VALUES (%s, %s)", (data.get("id"), json.dumps(data)))
-#     conn.commit()
+for reporter in ALL_REPORTERS:
+    url = f"https://static.case.law/{reporter}/ReporterMetadata.json"
+    response = requests.get(url)
+    data = response.json()
+    #print(json.dumps(data))
+    #print(data.get("id"))
+
+    # Insert the data into the reporters table
+    cur.execute("SELECT 1 FROM reporters WHERE id = %s", (str(data.get("id")),))
+    if cur.fetchone():
+        print(url)
+    else:
+        cur.execute("INSERT INTO reporters (id, data) VALUES (%s, %s)", (data.get("id"), json.dumps(data)))
+    conn.commit()
 
 
 # Close the cursor and connection
@@ -297,44 +304,46 @@ conn.autocommit = True
 register_vector(conn)
 cur = conn.cursor()
 # Fetch descriptions from the listings table
+
 # Create the reporters table
 # cur.execute("""
 # DROP TABLE cases_metadata
 # """)
-# cur.execute("""
-# CREATE TABLE IF NOT EXISTS cases_metadata(
-# 	id text primary key unique,
-# 	data jsonb
-# );
-# """)
-# conn.commit()
 
-# for reporter in ALL_REPORTERS:
-#     NUM_OF_VOLUMES = int(get_number_of_volumes_in_reporter(reporter))
-#     for i in range(NUM_OF_VOLUMES, 1, -1):
-#         # Fetch the data from the URL
-#         url = f"https://static.case.law/{reporter}/{i}/CasesMetadata.json"
-#         response = requests.get(url)
+cur.execute("""
+CREATE TABLE IF NOT EXISTS cases_metadata(
+	id text primary key unique,
+	data jsonb
+);
+""")
+conn.commit()
+
+for reporter in ALL_REPORTERS:
+    NUM_OF_VOLUMES = int(get_number_of_volumes_in_reporter(reporter))
+    for i in range(NUM_OF_VOLUMES, 1, -1):
+        # Fetch the data from the URL
+        url = f"https://static.case.law/{reporter}/{i}/CasesMetadata.json"
+        response = requests.get(url)
         
-#         if response.status_code == 200:
-#             data = response.json()
-#             print(data)
+        if response.status_code == 200:
+            data = response.json()
+            print(data)
             
-#             # Insert the data into the reporters table
-#             for item in data:
-#                 cur.execute("SELECT 1 FROM cases_metadata WHERE id = %s", (str(item.get("id")),))
-#                 if cur.fetchone():
-#                     print(f"Skipping {url}, already exists.")
-#                     continue
+            # Insert the data into the reporters table
+            for item in data:
+                cur.execute("SELECT 1 FROM cases_metadata WHERE id = %s", (str(item.get("id")),))
+                if cur.fetchone():
+                    print(f"Skipping {url}, already exists.")
+                    continue
                 
-#                 try:
-#                     cur.execute("INSERT INTO cases_metadata (id, data) VALUES (%s, %s)", (item.get("id"), json.dumps(item)))
-#                     conn.commit()
-#                 except errors.UniqueViolation:
-#                     print(f"Duplicate key value violates unique constraint: {item.get('id')}")
-#                     conn.rollback()
-#         else:
-#             print(f"Failed to fetch data from {url}, status code: {response.status_code}")
+                try:
+                    cur.execute("INSERT INTO cases_metadata (id, data) VALUES (%s, %s)", (item.get("id"), json.dumps(item)))
+                    conn.commit()
+                except errors.UniqueViolation:
+                    print(f"Duplicate key value violates unique constraint: {item.get('id')}")
+                    conn.rollback()
+        else:
+            print(f"Failed to fetch data from {url}, status code: {response.status_code}")
 
 # %% [markdown]
 # ## Create the Cases Table will all the case data in a reporter
@@ -352,6 +361,7 @@ cur = conn.cursor()
 # cur.execute("""
 # DROP TABLE cases
 # """)
+
 cur.execute("""
 CREATE TABLE IF NOT EXISTS cases(
 	id text primary key unique,

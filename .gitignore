@@ -5,3 +5,4 @@ Data_ingestion/.env
 .DS_Store
 Data_ingestion/.ipynb_checkpoints
 /src/frontend/node_modules/
+*/package-lock.json
