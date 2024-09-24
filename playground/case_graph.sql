@@ -24,6 +24,25 @@ SELECT * from cypher('graph_name', $$
             RETURN n.property, COUNT(r) AS refs
         $$) as (node TEXT, refs BIGINT);
 
+-- query edges in cases table
+SELECT c1.id AS id_from, c1.data ->> 'name_abbreviation', cites_to_element ->> 'cite' AS cite_to_id, c2.id AS id_to
+FROM cases c1
+LEFT JOIN 
+    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+LEFT JOIN 
+    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+JOIN cases c2 
+	ON case_ids::text = c2.id
+WHERE c1.id = '1857770';
+
+SELECT data ->> 'name_abbreviation', data
+		FROM cases
+		WHERE data -> 'citations' -> 0 ->> 'cite'::text LIKE '%230%600%';
+		   --OR id = '5265417';
+		
+SELECT data ->> 'name_abbreviation', data
+FROM cases
+WHERE data ->> 'name_abbreviation'::text LIKE '%Dubreuil%';
 
 
 -- creation
@@ -38,6 +57,7 @@ SELECT * FROM cypher('case_playground_graph', $$
     RETURN e.id
 $$) AS result(id int);
 
+-- doens't work
 DO $fff$ 
 DECLARE
     case_record RECORD;
