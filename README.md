@@ -24,7 +24,7 @@ You need to install [Postgres on your local box](https://postgresapp.com/) to ru
     python -m uvicorn fastapi_app:create_app --factory --reload
 ```
 
-    Or you can run "Backend" in the VS Code Run & Debug menu.
+Or you can run "Backend" in the VS Code Run & Debug menu.
 
 3. Run the frontend (with hot reloading):
 
