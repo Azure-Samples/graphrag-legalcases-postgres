@@ -76,21 +76,21 @@ We are going to use the following techniques and demonstrate how graphs can sign
 
 #### Azure OpenAI:
 
-Utilized for OpenAI embedding model to embed all the cases data.
-Using GPT4o to answer the user questions using the retrieved context.
+- Utilized for OpenAI embedding model to embed all the cases data.
+- Using GPT4o to answer the user questions using the retrieved context.
 
 #### Azure Machine Learning:
 
-Utilized to host the endpoint for the reranker model.
+- Utilized to host the endpoint for the reranker model.
 
 ### 4. Dataset Used
 The dataset used was all the cases in US history.
 
 We ingested all cases from the [Case Law](https://case.law/), almost 7 million cases from courts all over the US.
 
-[Case Data](https://static.case.law/wash/198/cases/0001-01.json): Data about the case. Including Opinions from the judge, Case names, Judges etc.
-[Case Metadata](https://static.case.law/wash/198/CasesMetadata.json): Metadata about a case. Including case names, judges, court information, citation information etc.
-[Case Data embeddings]: We embedded all the opinions from a case and store. it as a column in the Case Data table.
+- [Case Data](https://static.case.law/wash/198/cases/0001-01.json): Data about the case. Including Opinions from the judge, Case names, Judges etc.
+- [Case Metadata](https://static.case.law/wash/198/CasesMetadata.json): Metadata about a case. Including case names, judges, court information, citation information etc.
+- [Case Data embeddings]: We embedded all the opinions from a case and store. it as a column in the Case Data table.
 
 ### 5a. Business Value of Azure OpenAI to Microsoft Customers
 **Improved Productivity:** Streamlines the research and preparation process, saving time and resources for professionals.
