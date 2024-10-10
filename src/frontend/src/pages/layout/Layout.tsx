@@ -60,11 +60,11 @@ const Layout = () => {
                                 onChange={handleModeChange}
                                 className={styles.radioInput}
                             />
-                            GraphRAG
+                            GraphRAG + Semantic Ranker
                         </label>
                     </div>
 
-                    <h4 className={styles.headerRightText}>PAID - Postgres AI Demo</h4>
+                    <h4 className={styles.headerRightText}>Demo: GraphRAG on PostgreSQL</h4>
                 </div>
             </header>
 

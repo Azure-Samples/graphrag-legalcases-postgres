@@ -179,7 +179,7 @@ SELECT cases.id, cases.data ->> 'name_abbreviation' AS abbr, (cases.data#>>'{ana
 		LIMIT 55;
 
 -- Fused vector + reranker + pagerank + RRF(semantic, pagerank) results
-CREATE OR REPLACE FUNCTION get_vector_rerank_pagerank_rrf2_cases_v2(query TEXT, top_n INT, consider_n INT)
+CREATE OR REPLACE FUNCTION `get_vector_rerank_pagerank_rrf2_cases_v2`(query TEXT, top_n INT, consider_n INT)
 RETURNS TABLE (
 	score			 NUMERIC,
     pagerank_rank    BIGINT,
