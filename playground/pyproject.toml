@@ -16,6 +16,7 @@ python-decouple = "^3.8"
 psycopg = "^3.2.2"
 pandas = "^2.2.3"
 openai = "^1.47.0"
+tqdm = "^4.66.5"
 
 
 [build-system]
