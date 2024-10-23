@@ -28,7 +28,7 @@ def get_db_connection():
     conn_str = f"dbname=postgres host=localhost port={server.local_bind_port} user=postgres password={config('DB_PASSWORD')}"
     conn_str_formatted = f"postgresql://postgres:{config('DB_PASSWORD')}@localhost:{server.local_bind_port}/postgres"
     conn = psycopg.connect(conn_str)
-    conn.autocommit = True
+    # conn.autocommit = True
     return conn_str_formatted, conn_str, conn
 
 import pandas as pd
@@ -74,6 +74,18 @@ try:
 except:
     pass
 
+# Delete all edges
+exec("""SELECT * from cypher('case_graph', $$
+        MATCH ()-[r]-()
+        DELETE r
+$$) as (V agtype);""")
+
+# Delete all nodes
+exec("""SELECT * from cypher('case_graph', $$
+        MATCH (V)
+        DELETE V
+$$) as (V agtype);""")
+
 df = exec(f"""
     SELECT c1.id AS id_from, c1.data ->> 'name_abbreviation' AS abbreviation, cites_to_element ->> 'cite' AS cite_to_id, c2.id AS id_to
     FROM cases c1
@@ -98,9 +110,33 @@ for df in tqdm(exec_enum(f"""
     LEFT JOIN 
         LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
     JOIN cases c2 
-        ON case_ids::text = c2.id LIMIT 100000;
+        ON case_ids::text = c2.id LIMIT 1000;
     """), total= round(total_rows / 81.0)):
     all_data.append(df)
 
 final_df = pd.concat(all_data, ignore_index=True)
-print(final_df.shape)
+print(f"Total data: {final_df.shape}")
+
+# Create nodes
+print("Creating nodes...")
+nodes = final_df['id_from'].unique()
+print(nodes.shape)
+for item in tqdm(nodes):
+    exec(f"""SELECT * 
+                FROM cypher('case_graph_full', $$
+                    CREATE (:case {{case_id: '{item}'}})
+                $$) as (v agtype);
+          """)
+    
+# Create edges
+print("Creating edges...")
+for _, item in tqdm(final_df.iterrows(), total=final_df.shape[0]):
+    exec(f"""
+            SELECT * 
+            FROM cypher('case_graph_full', $$
+                MATCH (a:case), (b:case)
+                WHERE a.case_id = '{item['id_from']}' AND b.case_id = '{item['id_to']}'
+                CREATE (a)-[e:REF]->(b)
+                RETURN e
+            $$) as (e agtype);
+        """)

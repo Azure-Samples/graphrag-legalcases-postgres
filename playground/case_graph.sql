@@ -108,19 +108,96 @@ SELECT * FROM cypher('case_playground_graph', $$
     RETURN e.id
 $$) AS result(id int);
 
--- doens't work
-DO $fff$ 
-DECLARE
-    case_record RECORD;
+CREATE OR REPLACE FUNCTION create_case(case_id text)
+RETURNS void
+LANGUAGE plpgsql
+VOLATILE
+AS $BODY$
 BEGIN
-    -- Step 1: Loop through the SQL results
-    FOR case_record IN
-        SELECT id FROM cases_playground
-    LOOP
-        -- Step 2: Execute Cypher query for each record
-        PERFORM ag_catalog.cypher('case_playground_graph', $$
-            CREATE (c:Case {id: $1})
-            RETURN c
-        $$, case_record.id::int);
-    END LOOP;
-END $fff$;
+	load 'age';
+	SET search_path TO ag_catalog;
+	EXECUTE format('SELECT * FROM cypher(''case_graph_full'', $$CREATE (:case {case_id: %s})$$) AS (a agtype);', quote_ident(case_id));
+END
+$BODY$;
+
+CREATE OR REPLACE FUNCTION create_case_link(id_from text, id_to text)
+RETURNS void
+LANGUAGE plpgsql
+VOLATILE
+AS $BODY$
+BEGIN
+	load 'age';
+	SET search_path TO ag_catalog;
+	EXECUTE format('SELECT * FROM cypher(''case_graph_full'', $$MATCH (a:case), (b:case) WHERE a.case_id = %s AND b.case_id = %s CREATE (a)-[e:REF]->(b) RETURN e$$) AS (a agtype);', quote_ident(id_from), quote_ident(id_to));
+END
+$BODY$;
+
+-- Delete all edges
+DELETE FROM case_graph_full._ag_label_edge;
+-- Delete all nodes
+DELETE FROM case_graph_full._ag_label_vertex;
+
+-- Create nodes
+SELECT create_case(cases.id) 
+FROM public.cases;
+
+-- Create edges
+WITH edges AS (
+	SELECT c1.id AS id_from, c2.id AS id_to
+	FROM public.cases c1
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+	JOIN public.cases c2 
+		ON case_ids::text = c2.id
+	LIMIT 10
+)
+SELECT create_case_link(edges.id_from, edges.id_to) 
+FROM edges;
+
+SELECT c1.id AS id_from, c2.id AS id_to
+	FROM public.cases c1
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+	JOIN public.cases c2 
+		ON case_ids::text = c2.id
+	LIMIT 10;
+
+WITH edges AS (
+	SELECT DISTINCT c1.id AS id_from, c2.id AS id_to
+	FROM public.cases c1
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+	JOIN public.cases c2 
+		ON case_ids::text = c2.id
+), gedges AS (
+	SELECT edges.id_from, node1.id AS gid_from, edges.id_to, node2.id AS gid_to
+	FROM edges
+	LEFT JOIN case_graph_full."case" node1 ON node1.properties::json ->> 'case_id' = edges.id_from
+	LEFT JOIN case_graph_full."case" node2 ON node2.properties::json ->> 'case_id' = edges.id_to
+)
+INSERT INTO case_graph_full."REF" (start_id, end_id)
+SELECT gid_from AS start_id, gid_to AS end_id
+FROM gedges;
+
+SELECT * from cypher('case_graph', $$
+                    MATCH ()-[r]->(n)
+                    WHERE n.case_id IN ['782330', '615468']
+                    RETURN r
+                $$) as (r agtype);
+
+SELECT * from cypher('case_graph_full', $$
+                    MATCH ()-[r]->(n)
+                    WHERE n.case_id IN ['782330', '615468']
+                    RETURN r
+                $$) as (r agtype);
+
+SELECT * from cypher('case_graph', $$
+                    MATCH ()-[r]->()
+                    RETURN r
+                $$) as (r agtype);
