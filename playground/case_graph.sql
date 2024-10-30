@@ -21,20 +21,35 @@ semantic AS (
         ) WITH ORDINALITY AS elem(relevance)
 ),
 semantic_ranked AS (
-    SELECT semantic.relevance::DOUBLE PRECISION AS relevance, semantic.*, vector.*
+    SELECT semantic.relevance::DOUBLE PRECISION AS relevance, RANK() OVER (ORDER BY relevance DESC) AS semantic_rank,
+			semantic.*, vector.*
     FROM vector
     JOIN semantic ON vector.vector_rank = semantic.ordinality
     ORDER BY semantic.relevance DESC
 ),
 graph AS (
     SELECT * from semantic_ranked
-	JOIN cypher('case_graph', $$
+	LEFT JOIN cypher('case_graph_full', $$
             MATCH ()-[r]->(n)
             RETURN n.case_id, COUNT(r) AS refs
         $$) as graph_query(case_id TEXT, refs BIGINT)
 	ON semantic_ranked.id = graph_query.case_id
+),
+graph_ranked AS (
+    SELECT RANK() OVER (ORDER BY graph.refs DESC) AS graph_rank, graph.*
+    FROM graph ORDER BY graph_rank DESC
+),
+rrf AS (
+    SELECT
+        COALESCE(1.0 / (60 + graph_ranked.graph_rank), 0.0) +
+        COALESCE(1.0 / (60 + graph_ranked.semantic_rank), 0.0) AS score,
+        graph_ranked.*
+    FROM graph_ranked
+    ORDER BY score DESC
+    LIMIT 20
 )
-SELECT * FROM graph;
+SELECT * 
+FROM rrf;
 
 
 graph_ranked AS (
