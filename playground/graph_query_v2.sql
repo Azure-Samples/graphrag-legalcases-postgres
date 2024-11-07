@@ -88,8 +88,8 @@ graph AS (
 	from (
 	    SELECT semantic_ranked.id, graph_query.ref_id, c2.description_vector <=> embedding AS ref_cosine
 		FROM semantic_ranked
-		LEFT JOIN cypher('case_graph_full', $$
-	            MATCH (s)-[r]->(n)
+		LEFT JOIN cypher('case_graph', $$
+	            MATCH (s)-[r:REF]->(n)
 	            RETURN n.case_id AS case_id, s.case_id AS ref_id
 	        $$) as graph_query(case_id TEXT, ref_id TEXT)
 		ON semantic_ranked.id = graph_query.case_id
@@ -125,6 +125,35 @@ rrf AS (
 select label,score,graph_rank,semantic_rank,vector_rank,id,case_name,"date","data",refs,relevance
 FROM rrf
 order by score DESC;
+
+
+-- Demo dataset
+WITH
+user_query as (
+	select 'Water leaking into the apartment from the floor above.' as query_text
+),
+embedding_query AS (
+    SELECT query_text, azure_openai.create_embeddings('text-embedding-3-small', query_text)::vector AS embedding
+    from user_query
+),
+vector AS (
+    SELECT cases.id, cases.data#>>'{name_abbreviation}' AS case_name, cases.data#>>'{decision_date}' AS date, cases.data AS data, 
+    RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank, query_text, embedding
+    FROM cases, embedding_query
+    WHERE (cases.data#>>'{court, id}')::integer IN (9029)--, 8985) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+    ORDER BY description_vector <=> embedding
+    LIMIT 60
+),
+graph AS (
+    SELECT vector.id, graph_query.ref_id
+	FROM vector
+	LEFT JOIN cypher('case_graph', $$
+            MATCH (s)-[r:REF]->(n)
+            RETURN n.case_id AS case_id, s.case_id AS ref_id
+        $$) as graph_query(case_id TEXT, ref_id TEXT)
+	ON vector.id = graph_query.case_id
+)
+select * from graph;
 
 -- Unoptimized final query
 -- Recall:    40% -> 60% -> 70%
@@ -288,7 +317,7 @@ order by score DESC;
 
 -- Experiments
 
-select vector('[3,1,2]');
+
 
 select * 
 from cypher('case_graph_full', $$

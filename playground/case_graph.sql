@@ -123,6 +123,32 @@ SELECT * FROM cypher('case_playground_graph', $$
     RETURN e.id
 $$) AS result(id int);
 
+CREATE OR REPLACE FUNCTION create_case_in_case_graph(case_id text)
+RETURNS void
+LANGUAGE plpgsql
+VOLATILE
+AS $BODY$
+BEGIN
+	load 'age';
+	SET search_path TO ag_catalog;
+	EXECUTE format('SELECT * FROM cypher(''case_graph'', $$CREATE (:case {case_id: %s})$$) AS (a agtype);', quote_ident(case_id));
+END
+$BODY$;
+
+CREATE OR REPLACE FUNCTION create_case_link_in_case_graph(id_from text, id_to text)
+RETURNS void
+LANGUAGE plpgsql
+VOLATILE
+AS $BODY$
+BEGIN
+	load 'age';
+	SET search_path TO ag_catalog;
+	EXECUTE format('SELECT * FROM cypher(''case_graph'', $$MATCH (a:case), (b:case) WHERE a.case_id = %s AND b.case_id = %s CREATE (a)-[e:REF]->(b) RETURN e$$) AS (a agtype);', quote_ident(id_from), quote_ident(id_to));
+END
+$BODY$;
+
+
+
 CREATE OR REPLACE FUNCTION create_case(case_id text)
 RETURNS void
 LANGUAGE plpgsql
@@ -147,6 +173,8 @@ BEGIN
 END
 $BODY$;
 
+
+-- REAL CREATION
 -- Delete all edges
 DELETE FROM case_graph_full._ag_label_edge;
 -- Delete all nodes
@@ -200,19 +228,76 @@ INSERT INTO case_graph_full."REF" (start_id, end_id)
 SELECT gid_from AS start_id, gid_to AS end_id
 FROM gedges;
 
+-- CREATION of case_graph
+SELECT * FROM ag_catalog.drop_graph('case_graph', true);
+SELECT create_graph('case_graph');
+
+-- Create nodes (doesn't work in dbeaver, but works in pgadmin)
+SELECT create_case_in_case_graph(cases.id) 
+FROM public.cases;
+
 SELECT * from cypher('case_graph', $$
-                    MATCH ()-[r]->(n)
+                    MATCH (n)
+                    RETURN COUNT(n.case_id)
+                $$) as (case_id TEXT);
+
+WITH edges AS (
+	SELECT c1.id AS id_from, c2.id AS id_to
+	FROM public.cases c1
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+	JOIN public.cases c2 
+		ON case_ids::text = c2.id
+	LIMIT 10
+)
+SELECT create_case_link_in_case_graph(edges.id_from, edges.id_to) 
+FROM edges
+limit 1;
+               
+WITH edges AS (
+	SELECT DISTINCT c1.id AS id_from, c2.id AS id_to
+	FROM public.cases c1
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+	LEFT JOIN 
+	    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+	JOIN public.cases c2 
+		ON case_ids::text = c2.id
+), gedges AS (
+	SELECT edges.id_from, node1.id AS gid_from, edges.id_to, node2.id AS gid_to
+	FROM edges
+	LEFT JOIN case_graph."case" node1 ON node1.properties::json ->> 'case_id' = edges.id_from
+	LEFT JOIN case_graph."case" node2 ON node2.properties::json ->> 'case_id' = edges.id_to
+)
+INSERT INTO case_graph."REF" (start_id, end_id)
+SELECT gid_from AS start_id, gid_to AS end_id
+FROM gedges;
+
+drop index case_graph.case_graph_idx_on_case_id;
+-- doesn't work for WHERE IN clauses
+CREATE INDEX case_graph_idx_on_case_id ON case_graph."case" USING gin (properties);
+-- works for WHERE IN clauses
+CREATE INDEX CONCURRENTLY case_graph_ex_idx ON case_graph."case"
+(ag_catalog.agtype_access_operator(properties, '"case_id"'::agtype));
+
+CREATE INDEX case_graph_idx_on_end_id ON case_graph."REF" (end_id);
+CREATE INDEX case_graph_idx_on_start_id ON case_graph."REF" (start_id);
+
+SELECT * from cypher('case_graph', $$ EXPLAIN ANALYZE
+					MATCH ()-[r:REF]->(n)
                     WHERE n.case_id IN ['782330', '615468']
                     RETURN r
                 $$) as (r agtype);
 
-SELECT * from cypher('case_graph_full', $$
-                    MATCH ()-[r]->(n)
+SELECT * from cypher('case_graph', $$
+					MATCH ()-[r:REF]->(n)
                     WHERE n.case_id IN ['782330', '615468']
                     RETURN r
                 $$) as (r agtype);
 
 SELECT * from cypher('case_graph', $$
                     MATCH ()-[r]->()
-                    RETURN r
+                    RETURN count(r)
                 $$) as (r agtype);
