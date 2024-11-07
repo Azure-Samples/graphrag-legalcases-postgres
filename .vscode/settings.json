@@ -1,0 +1,14 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 28816,
+            "driver": "PostgreSQL",
+            "name": "mluk-diskann-demo",
+            "database": "postgres",
+            "username": "postgres",
+            "password": "Carrot-gen-0"
+        }
+    ]
+}

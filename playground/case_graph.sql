@@ -7,17 +7,17 @@ embedding_query AS (
     SELECT azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above.')::vector AS embedding
 ),
 vector AS (
-    SELECT cases.id, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+    SELECT cases.id, cases.data#>>'{name_abbreviation}', RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
     FROM cases, embedding_query
     WHERE (cases.data#>>'{court, id}')::integer IN (9029)--, 8985) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
     ORDER BY description_vector <=> embedding
-    LIMIT 10
+    LIMIT 60
 ),
 semantic AS (
     SELECT * 
     FROM jsonb_array_elements(
             semantic_relevance('Water leaking into the apartment from the floor above.',
-            10)
+            60)
         ) WITH ORDINALITY AS elem(relevance)
 ),
 semantic_ranked AS (

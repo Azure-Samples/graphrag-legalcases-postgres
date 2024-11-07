@@ -235,7 +235,49 @@ $$ LANGUAGE plpgsql;
 
 SELECT * FROM get_vector_rerank_pagerank_rrf2_cases('Water leaking into the apartment from the floor above.', 
                 50, 50);
-				
+
+CREATE OR REPLACE FUNCTION generate_json(query TEXT, n INT)
+RETURNS jsonb AS $$
+BEGIN
+    RETURN (
+        SELECT jsonb_build_object(
+            'pairs', 
+            jsonb_agg(
+                jsonb_build_array(query, LEFT(text, 800))
+            )
+        ) AS result_json
+        FROM (
+            SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
+		    FROM cases
+			WHERE (cases.data#>>'{court, id}')::integer IN (9029) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+		    ORDER BY description_vector <=> azure_openai.create_embeddings('text-embedding-3-small', query)::vector
+		    LIMIT n
+        ) subquery
+    );
+END $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_relevance(text1 TEXT, text2 TEXT)
+RETURNS DOUBLE PRECISION AS $$
+DECLARE
+    json_pairs jsonb;
+	result_json jsonb;
+BEGIN
+	json_pairs := jsonb_build_object(
+            'pairs', 
+            jsonb_build_array(jsonb_build_array(COALESCE(text1, ''), LEFT(COALESCE(text2, ''), 800))));
+	-- RAISE NOTICE 'json_pairs: %', json_pairs;
+
+	result_json := azure_ml.invoke(
+				json_pairs,
+				deployment_name=>'bge-v2-m3-1',
+				timeout_ms => 180000);
+	RETURN (
+		SELECT jsonb_array_elements(result_json)::DOUBLE PRECISION as result
+	);
+END $$ LANGUAGE plpgsql;
+
+SELECT get_relevance('foo', 'bar');
+
 CREATE OR REPLACE FUNCTION generate_json_pairs(query TEXT, n INT)
 RETURNS jsonb AS $$
 BEGIN
@@ -243,7 +285,7 @@ BEGIN
         SELECT jsonb_build_object(
             'pairs', 
             jsonb_agg(
-                jsonb_build_array(query, LEFT(text, 8000))
+                jsonb_build_array(query, LEFT(text, 800))
             )
         ) AS result_json
         FROM (
@@ -265,12 +307,32 @@ BEGIN
 	json_pairs := generate_json_pairs(query, n);
 	result_json := azure_ml.invoke(
 				json_pairs,
-				deployment_name=>'bge-reranker-large-hf-1',
-				timeout_ms => 120000);
+				deployment_name=>'bge-v2-m3-1',
+				timeout_ms => 180000);
 	RETURN (
 		SELECT result_json as result
 	);
 END $$ LANGUAGE plpgsql;
+
+SELECT * FROM semantic_relevance('Water leaking into the apartment from the floor above.', 1);
+SELECT azure_ml.invoke(
+				jsonb_build_object(
+            		'pairs', 
+            		jsonb_agg(
+            	    	jsonb_build_array('age', 'fruit')
+            	),
+				deployment_name=>'bge-v2-m3-1',
+				timeout_ms => 180000);
+
+WITH 
+semantic AS (
+	SELECT jsonb_array_elements(azure_ml.invoke(
+					json_payload,
+					deployment_name=>'bge-v2-m3-1',
+					timeout_ms => 180000)) AS relevance
+	FROM generate_json_pairs('Water leaking into the apartment from the floor above', 50) AS json_payload
+)
+SELECT RANK() OVER (ORDER BY relevance DESC) AS semantic_rank, * FROM semantic;
 
 SELECT pg_get_functiondef(p.oid)
 FROM pg_proc p
