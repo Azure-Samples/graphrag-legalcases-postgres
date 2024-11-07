@@ -1,44 +1,6 @@
 LOAD 'age';
 SET search_path = public, ag_catalog, "$user";
 
-drop table t1;
-CREATE TABLE t1 AS (
-WITH
-embedding_query AS (
-    SELECT azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above.')::vector AS embedding
-),
-vector AS (
-    SELECT cases.id, cases.data#>>'{name_abbreviation}' AS case_name, cases.data#>>'{decision_date}' AS date, cases.data AS data, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
-    FROM cases, embedding_query
-    WHERE (cases.data#>>'{court, id}')::integer IN (9029)--, 8985) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
-		  --AND cases.data#>>'{decision_date}' > '2009'
-    ORDER BY description_vector <=> embedding
-    LIMIT 60
-),
-semantic AS (
-    SELECT get_relevance('Water leaking into the apartment from the floor above.', 
-		  		vector.data -> 'casebody' -> 'opinions' -> 0 ->> 'text') AS relevance,
-		   vector.*
-    FROM vector
-),
-semantic_ranked AS (
-    SELECT RANK() OVER (ORDER BY relevance DESC) AS semantic_rank,
-		   semantic.*
-    FROM semantic
-    ORDER BY semantic.relevance DESC
-),
-graph AS (
-    SELECT graph_query.ref_id, semantic_ranked.*, c2.data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS ref_text
-	FROM semantic_ranked
-	LEFT JOIN cypher('case_graph_full', $$
-            MATCH (s)-[r]->(n)
-            RETURN n.case_id AS case_id, s.case_id AS ref_id
-        $$) as graph_query(case_id TEXT, ref_id TEXT)
-	ON semantic_ranked.id = graph_query.case_id
-	LEFT JOIN cases c2
-	ON c2.id = graph_query.ref_id
-)
-select get_relevance('Water leaking into the apartment from the floor above.', ref_text) AS ref_rel, * from graph);
 
 -- golden dataset
 drop table gold_dataset;
@@ -232,6 +194,47 @@ rrf AS (
 SELECT * 
 FROM rrf
 order by score DESC;
+
+
+drop table t1;
+CREATE TABLE t1 AS (
+WITH
+embedding_query AS (
+    SELECT azure_openai.create_embeddings('text-embedding-3-small', 'Water leaking into the apartment from the floor above.')::vector AS embedding
+),
+vector AS (
+    SELECT cases.id, cases.data#>>'{name_abbreviation}' AS case_name, cases.data#>>'{decision_date}' AS date, cases.data AS data, RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+    FROM cases, embedding_query
+    WHERE (cases.data#>>'{court, id}')::integer IN (9029)--, 8985) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
+		  --AND cases.data#>>'{decision_date}' > '2009'
+    ORDER BY description_vector <=> embedding
+    LIMIT 60
+),
+semantic AS (
+    SELECT get_relevance('Water leaking into the apartment from the floor above.', 
+		  		vector.data -> 'casebody' -> 'opinions' -> 0 ->> 'text') AS relevance,
+		   vector.*
+    FROM vector
+),
+semantic_ranked AS (
+    SELECT RANK() OVER (ORDER BY relevance DESC) AS semantic_rank,
+		   semantic.*
+    FROM semantic
+    ORDER BY semantic.relevance DESC
+),
+graph AS (
+    SELECT graph_query.ref_id, semantic_ranked.*, c2.data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS ref_text
+	FROM semantic_ranked
+	LEFT JOIN cypher('case_graph_full', $$
+            MATCH (s)-[r]->(n)
+            RETURN n.case_id AS case_id, s.case_id AS ref_id
+        $$) as graph_query(case_id TEXT, ref_id TEXT)
+	ON semantic_ranked.id = graph_query.case_id
+	LEFT JOIN cases c2
+	ON c2.id = graph_query.ref_id
+)
+select get_relevance('Water leaking into the apartment from the floor above.', ref_text) AS ref_rel, * from graph);
+
 
 
 -- (Precursor to final) Vector search based check of refs, 7/10, 8/20: 
