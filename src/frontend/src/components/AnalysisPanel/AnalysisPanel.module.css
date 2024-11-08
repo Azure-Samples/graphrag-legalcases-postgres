@@ -1,3 +1,19 @@
+.graphPanel {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+    word-wrap: break-word;
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+.graphContainer {
+    padding: 0px 0px 0px 0px;
+    display: inline-block;
+}
+
+.graphRecall {
+    font-size:x-large;
+}
+
 .thoughtProcess {
     font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
     word-wrap: break-word;

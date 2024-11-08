@@ -28,7 +28,7 @@ const Layout = () => {
             <header className={styles.header} role={"banner"}>
                 <div className={styles.headerContainer}>
                     <Link to="/" className={styles.headerTitleContainer}>
-                        <h3 className={styles.headerTitle}>Legal Research Assistant</h3>
+                        <h3 className={styles.headerTitle}>Legal Research Copilot</h3>
                     </Link>
 
                     <div className={styles.radioContainer}>

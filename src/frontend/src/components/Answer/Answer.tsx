@@ -40,6 +40,16 @@ export const Answer = ({
             <Stack.Item>
                 <Stack horizontal horizontalAlign="space-between">
                     <AnswerIcon />
+                    <div>
+                            <IconButton
+                                style={{ color: "black" }}
+                                iconProps={{ iconName: "HomeGroup" }} // "TFVCLogo"
+                                title="Show graph"
+                                ariaLabel="Show graph"
+                                onClick={() => onThoughtProcessClicked()}
+                                disabled = { false }
+                            />
+                    </div>
                     { false && (
                         <div>
                             <IconButton

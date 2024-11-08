@@ -124,7 +124,8 @@ rrf AS (
 )
 select label,score,graph_rank,semantic_rank,vector_rank,id,case_name,"date","data",refs,relevance
 FROM rrf
-order by score DESC;
+order by semantic_rank;
+--score DESC;
 
 
 -- Demo dataset
@@ -153,7 +154,10 @@ graph AS (
         $$) as graph_query(case_id TEXT, ref_id TEXT)
 	ON vector.id = graph_query.case_id
 )
-select * from graph;
+select distinct ref_id from graph;
+--select count(*) from cases c 
+--where c.id in (select id from graph)
+--	  or c.id in (select ref_id from graph);
 
 -- Unoptimized final query
 -- Recall:    40% -> 60% -> 70%

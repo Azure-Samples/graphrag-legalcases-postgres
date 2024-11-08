@@ -226,81 +226,83 @@ const Chat = () => {
                 {false && (<SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> )}
             </div>
             <div className={styles.chatRoot}>
-                <div className={styles.chatContainer}>
-                    {!lastQuestionRef.current ? (
-                        <div className={styles.chatEmptyState}>
-                            <SparkleFilled fontSize={"120px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
-                            <h1 className={styles.chatEmptyStateTitle}>US Case Law Database</h1>
-                            <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
-                            <ExampleList onExampleClicked={onExampleClicked} />
-                        </div>
-                    ) : (
-                        <div className={styles.chatMessageStream}>
-                            {isStreaming &&
-                                streamedAnswers.map((streamedAnswer, index) => (
-                                    <div key={index}>
-                                        <UserChatMessage message={streamedAnswer[0]} />
-                                        <div className={styles.chatMessageGpt}>
-                                            <Answer
-                                                isStreaming={true}
-                                                key={index}
-                                                answer={streamedAnswer[1]}
-                                                isSelected={false}
-                                                onCitationClicked={c => onShowCitation(c, index)}
-                                                onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
-                                                onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
-                                                onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                            />
+                {!activeAnalysisPanelTab && (
+                    <div className={styles.chatContainer}>
+                        {!lastQuestionRef.current ? (
+                            <div className={styles.chatEmptyState}>
+                                <SparkleFilled fontSize={"120px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
+                                <h1 className={styles.chatEmptyStateTitle}>US Case Law Database</h1>
+                                <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
+                                <ExampleList onExampleClicked={onExampleClicked} />
+                            </div>
+                        ) : (
+                            <div className={styles.chatMessageStream}>
+                                {isStreaming &&
+                                    streamedAnswers.map((streamedAnswer, index) => (
+                                        <div key={index}>
+                                            <UserChatMessage message={streamedAnswer[0]} />
+                                            <div className={styles.chatMessageGpt}>
+                                                <Answer
+                                                    isStreaming={true}
+                                                    key={index}
+                                                    answer={streamedAnswer[1]}
+                                                    isSelected={false}
+                                                    onCitationClicked={c => onShowCitation(c, index)}
+                                                    onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
+                                                    onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
+                                                    onFollowupQuestionClicked={q => makeApiRequest(q)}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            {!isStreaming &&
-                                answers.map((answer, index) => (
-                                    <div key={index}>
-                                        <UserChatMessage message={answer[0]} />
-                                        <div className={styles.chatMessageGpt}>
-                                            <Answer
-                                                isStreaming={false}
-                                                key={index}
-                                                answer={answer[1]}
-                                                isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
-                                                onCitationClicked={c => onShowCitation(c, index)}
-                                                onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
-                                                onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
-                                                onFollowupQuestionClicked={q => makeApiRequest(q)}
-                                            />
+                                    ))}
+                                {!isStreaming &&
+                                    answers.map((answer, index) => (
+                                        <div key={index}>
+                                            <UserChatMessage message={answer[0]} />
+                                            <div className={styles.chatMessageGpt}>
+                                                <Answer
+                                                    isStreaming={false}
+                                                    key={index}
+                                                    answer={answer[1]}
+                                                    isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
+                                                    onCitationClicked={c => onShowCitation(c, index)}
+                                                    onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
+                                                    onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab, index)}
+                                                    onFollowupQuestionClicked={q => makeApiRequest(q)}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            {isLoading && (
-                                <>
-                                    <UserChatMessage message={lastQuestionRef.current} />
-                                    <div className={styles.chatMessageGptMinWidth}>
-                                        <AnswerLoading />
-                                    </div>
-                                </>
-                            )}
-                            {error ? (
-                                <>
-                                    <UserChatMessage message={lastQuestionRef.current} />
-                                    <div className={styles.chatMessageGptMinWidth}>
-                                        <AnswerError error={error.toString()} onRetry={() => makeApiRequest(lastQuestionRef.current)} />
-                                    </div>
-                                </>
-                            ) : null}
-                            <div ref={chatMessageStreamEnd} />
-                        </div>
-                    )}
+                                    ))}
+                                {isLoading && (
+                                    <>
+                                        <UserChatMessage message={lastQuestionRef.current} />
+                                        <div className={styles.chatMessageGptMinWidth}>
+                                            <AnswerLoading />
+                                        </div>
+                                    </>
+                                )}
+                                {error ? (
+                                    <>
+                                        <UserChatMessage message={lastQuestionRef.current} />
+                                        <div className={styles.chatMessageGptMinWidth}>
+                                            <AnswerError error={error.toString()} onRetry={() => makeApiRequest(lastQuestionRef.current)} />
+                                        </div>
+                                    </>
+                                ) : null}
+                                <div ref={chatMessageStreamEnd} />
+                            </div>
+                        )}
 
-                    <div className={styles.chatInput}>
-                        <QuestionInput
-                            clearOnSend
-                            placeholder="Type a new question"
-                            disabled={isLoading}
-                            onSend={question => makeApiRequest(question)}
-                        />
+                        <div className={styles.chatInput}>
+                            <QuestionInput
+                                clearOnSend
+                                placeholder="Type a new question"
+                                disabled={isLoading}
+                                onSend={question => makeApiRequest(question)}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {answers.length > 0 && activeAnalysisPanelTab && (
                     <AnalysisPanel

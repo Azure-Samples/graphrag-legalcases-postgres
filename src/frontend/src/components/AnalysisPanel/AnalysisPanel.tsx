@@ -8,6 +8,7 @@ import { AnalysisPanelTabs } from "./AnalysisPanelTabs";
 import { ThoughtProcess } from "./ThoughtProcess";
 import { MarkdownViewer } from "../MarkdownViewer";
 import { useState, useEffect } from "react";
+import { GraphPanel } from "./GraphPanel";
 
 interface Props {
     className: string;
@@ -22,8 +23,8 @@ const pivotItemDisabledStyle = { disabled: true, style: { color: "grey" } };
 
 export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeight, className, onActiveTabChanged }: Props) => {
     const isDisabledThoughtProcessTab: boolean = !answer.context.thoughts;
-    const isDisabledSupportingContentTab: boolean = !answer.context.data_points;
-    const isDisabledCitationTab: boolean = !activeCitation;
+    const isDisabledSupportingContentTab: boolean = true;// !answer.context.data_points;
+    const isDisabledCitationTab: boolean = true; //!activeCitation;
     const [citation, setCitation] = useState("");
 
 
@@ -71,11 +72,11 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
             onLinkClick={pivotItem => pivotItem && onActiveTabChanged(pivotItem.props.itemKey! as AnalysisPanelTabs)}
         >
             <PivotItem
-                itemKey={AnalysisPanelTabs.ThoughtProcessTab}
-                headerText="Thought process"
+                itemKey={AnalysisPanelTabs.GraphTab}
+                headerText="Citation Graph"
                 headerButtonProps={isDisabledThoughtProcessTab ? pivotItemDisabledStyle : undefined}
             >
-                <ThoughtProcess thoughts={answer.context.thoughts || []} />
+                <GraphPanel thoughts={answer.context.thoughts || []} />
             </PivotItem>
         </Pivot>
     );

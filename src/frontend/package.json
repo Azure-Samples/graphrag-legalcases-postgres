@@ -25,7 +25,9 @@
     "react-router-dom": "^6.18.0",
     "@microsoft/ai-chat-protocol": "1.0.0-beta.20240610.1",
     "react-syntax-highlighter": "^15.5.0",
-    "scheduler": "^0.20.2"
+    "scheduler": "^0.20.2",
+    "react-cytoscapejs": "^1.0.0",
+    "cytoscape": "^3.20.0"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.4",
@@ -35,6 +37,7 @@
     "prettier": "^3.0.3",
     "typescript": "^5.2.2",
     "@types/react-syntax-highlighter": "^15.5.7",
-    "vite": "^4.5.3"
+    "vite": "^4.5.3",
+    "@types/react-cytoscapejs": "^1.0.0"
   }
 }
