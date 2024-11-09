@@ -1,0 +1,3 @@
+[submodule "vendor/age"]
+	path = vendor/age
+	url = https://github.com/apache/age.git

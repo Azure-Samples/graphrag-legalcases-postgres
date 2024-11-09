@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: legal-research-copilot-postgresql
+metadata:
+    template: legal-research-copilot-postgresql@0.0.1
+requiredVersions:
+    azd: ">= 1.10.0"
+services:
+    web:
+        project: ./src/backend
+        language: py
+        module: web
+        host: containerapp
+        docker:
+            remoteBuild: true
+        hooks:
+            prebuild:
+                windows:
+                    shell: pwsh
+                    run:  cd ../frontend;npm install;npm run build
+                    interactive: false
+                    continueOnError: false
+                posix:
+                    shell: sh
+                    run:  cd ../frontend;npm install;npm run build
+                    interactive: false
+                    continueOnError: false
+hooks:
+    postprovision:
+        windows:
+            shell: pwsh
+            run: .\scripts\setup_postgres_database.ps1;.\scripts\setup_postgres_azurerole.ps1;.\scripts\setup_postgres_seeddata.ps1
+            interactive: true
+            continueOnError: false
+        posix:
+            shell: sh
+            run: ./scripts/setup_postgres_database.sh;./scripts/setup_postgres_azurerole.sh;./scripts/setup_postgres_seeddata.sh
+            interactive: true
+            continueOnError: false
+pipeline:
+  variables:
+    - DEPLOY_AZURE_OPENAI
+    - OPENAI_CHAT_HOST
+    - OPENAI_EMBED_HOST
+    - AZURE_OPENAI_ENDPOINT
+    - AZURE_OPENAI_VERSION
+    - AZURE_OPENAI_CHAT_DEPLOYMENT
+    - AZURE_OPENAI_CHAT_MODEL
+    - AZURE_OPENAI_CHAT_DEPLOYMENT_VERSION
+    - AZURE_OPENAI_CHAT_DEPLOYMENT_CAPACITY
+    - AZURE_OPENAI_EVAL_DEPLOYMENT_SKU
+    - AZURE_OPENAI_EMBED_DEPLOYMENT
+    - AZURE_OPENAI_EMBED_MODEL
+    - AZURE_OPENAI_EMBED_DEPLOYMENT_VERSION
+    - AZURE_OPENAI_EMBED_DEPLOYMENT_CAPACITY
+    - AZURE_OPENAI_EMBED_DEPLOYMENT_SKU
+    - AZURE_OPENAI_EMBED_DIMENSIONS
+    - AZURE_OPENAI_EMBEDDING_COLUMN
+    - AZURE_OPENAI_EVAL_DEPLOYMENT
+    - AZURE_OPENAI_EVAL_MODEL

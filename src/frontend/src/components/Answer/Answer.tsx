@@ -79,10 +79,10 @@ export const Answer = ({
                             if (!citation) return null;
                             return (
                                 <li key={rowId}>
-                                    <h4>{citation.name}</h4>
-                                    <p className={styles.referenceMetadata}>Brand: {citation.brand}</p>
-                                    <p className={styles.referenceMetadata}>Price: {citation.price}</p>
-                                    <p>{citation.description}</p>
+                                    <h4>{citation.id}</h4>
+                                    <p className={styles.referenceMetadata}>Court: {citation.data.court.name}</p>
+                                    <p className={styles.referenceMetadata}>Decision Date: {citation.data.decision_date}</p>
+                                    <p>{citation.data.name}</p>
                                 </li>
                             );
                         })}
@@ -90,6 +90,8 @@ export const Answer = ({
                     </Stack>
                 </Stack.Item>
             )}
+
+
 
             {!!followupQuestions?.length && showFollowupQuestions && onFollowupQuestionClicked && (
                 <Stack.Item>
