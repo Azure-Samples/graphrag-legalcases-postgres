@@ -38,6 +38,10 @@ param allowedSingleIPs array = []
 // PostgreSQL version
 param version string
 
+@secure()
+param tempUserPassword string
+
+
 var authProperties = authType == 'Password' ? {
   administratorLogin: administratorLogin
   administratorLoginPassword: administratorLoginPassword
@@ -118,7 +122,7 @@ resource configurations 'Microsoft.DBforPostgreSQL/flexibleServers/configuration
   name: 'azure.extensions'
   parent: postgresServer
   properties: {
-    value: 'vector'
+    value: 'vector, azure_ai, age'
     source: 'user-override'
   }
   dependsOn: [

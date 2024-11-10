@@ -88,6 +88,15 @@
       },
       "openAIComKey": {
         "value": "${OPENAICOM_KEY}"
+      },
+      "azureMLScoringEndpoint": {
+        "value": "${AZURE_ML_SCORING_ENDPOINT}"
+      },
+      "azureMLEndpointKey": {
+        "value": "${AZURE_ML_ENDPOINT_KEY}"
+      },
+      "tempUserPassword": {
+        "value": "${TEMP_USER_PASSWORD}"
       }
     }
 }

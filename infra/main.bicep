@@ -68,6 +68,17 @@ param openAIChatHost string = 'azure'
 ])
 param openAIEmbedHost string = 'azure'
 
+@description('Azure ML Scoring Endpoint')
+param azureMLScoringEndpoint string
+
+@secure()
+@description('Azure ML Endpoint Key')
+param azureMLEndpointKey string
+
+@secure()
+@description('Temp User Pwd')
+param tempUserPassword string
+
 @secure()
 param openAIComKey string = ''
 
@@ -182,6 +193,7 @@ module postgresServer 'core/database/postgresql/flexibleserver.bicep' = {
     entraAdministratorType: postgresEntraAdministratorType
     allowAzureIPsFirewall: true
     allowAllIPsFirewall: true // Necessary for post-provision script, can be disabled after
+    tempUserPassword: tempUserPassword
   }
 }
 
@@ -326,6 +338,18 @@ var webAppEnv = union(azureOpenAIKeyEnv, openAIComKeyEnv, [
   {
     name: 'AZURE_OPENAI_VERSION'
     value: openAIChatHost == 'azure' ? azureOpenAIAPIVersion : ''
+  }
+  {
+    name: 'AZURE_ML_SCORING_ENDPOINT'
+    value: azureMLScoringEndpoint
+  }
+  {
+    name: 'AZURE_ML_ENDPOINT_KEY'
+    value: azureMLEndpointKey
+  }
+  {
+    name: 'TEMP_USER_PASSWORD'
+    value: tempUserPassword
   }
 ])
 

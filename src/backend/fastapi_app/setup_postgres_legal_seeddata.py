@@ -60,6 +60,16 @@ async def seed_data_from_csv(engine: AsyncEngine):
         except Exception as e:
             logger.error(f"Data seeding failed: {e}")
             await session.rollback()
+            return
+
+        # Enable Apache AGE and set the search path
+        await enable_age_extension(session)
+
+        # # Insert cases as nodes in the graph
+        await ingest_cases_to_graph_from_postgresql(session)
+
+        # # Create edges based on citations
+        await create_edges_from_citations(session)
 
 
 async def insert_batch(session: AsyncSession, batch):
@@ -91,6 +101,133 @@ async def insert_batch(session: AsyncSession, batch):
     except Exception as e:
         logger.error(f"Batch insert failed: {e}")
         await session.rollback()
+
+
+async def enable_age_extension(session):
+    """
+    Enable the Apache AGE extension and set the search path.
+    """
+    logger.info("Enabling the Apache AGE extension for Postgres...")
+    await session.execute(text("CREATE EXTENSION IF NOT EXISTS age"))
+    # await session.execute(text("LOAD 'age'"))
+    await session.execute(text('SET search_path = ag_catalog, "$user", public;'))
+    graph_name = "case_graph"
+    await session.execute(text(f"SELECT create_graph('{graph_name}');"))
+
+
+async def ingest_cases_to_graph_from_postgresql(session):
+    """
+    Ingest specific case text from PostgreSQL `cases_summary` table and create nodes in the graph.
+    """
+    query = text("""
+        SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, summary AS summary
+        FROM cases_summary;
+    """)
+
+    result = await session.execute(query)
+    cases = result.fetchall()
+
+    processed_rows = 0
+    total_rows = len(cases)
+    skipped_rows = 0
+    error_count = 0  # Counter to keep track of the number of errors
+    max_errors = 3  # Stop after 3 errors
+
+    for case in cases:
+        case_id, _, case_summary = case
+        case_summary_sanitized = sanitize_case_text(case_summary)
+
+        try:
+            query = f"""
+                SELECT * FROM cypher('case_graph', $$ 
+                    CREATE (c:Case {{id: '{case_id}', summary: '{case_summary_sanitized}'}})
+                $$) AS (c agtype);
+            """
+            await session.execute(text(query))
+
+            processed_rows += 1
+
+            # Commit every batch to ensure data is persisted
+            if processed_rows % BATCH_SIZE == 0:
+                await session.commit()
+
+        except Exception as e:
+            skipped_rows += 1
+            error_count += 1
+            logger.error(f"Skipped case {case_id} due to error: {e}")
+
+            # Stop the process if 3 errors have occurred
+            if error_count >= max_errors:
+                logger.error(f"Encountered {error_count} errors. Stopping further processing.")
+                break
+            continue
+
+    # Final commit after the loop
+    await session.commit()
+
+    logger.info(f"Inserted {processed_rows} case nodes into the graph from the PostgreSQL `cases` table.")
+    logger.info(f"Skipped {skipped_rows} problematic cases.")
+
+
+async def create_edges_from_citations(session):
+    """
+    Creates edges in the `case_graph` graph based on citation relationships
+    in the `cases_summary` table.
+    """
+    define_edges_query = text("""
+        WITH edges AS (
+            SELECT DISTINCT c1.id AS id_from, c2.id AS id_to
+            FROM cases_summary c1
+            LEFT JOIN LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+            LEFT JOIN LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+            JOIN cases_summary c2 ON case_ids::text = c2.id
+        )
+        SELECT id_from, id_to FROM edges;
+    """)
+
+    result = await session.execute(define_edges_query)
+    edges = result.fetchall()
+
+    for id_from, id_to in edges:
+        cypher_query = f"""
+        SELECT * FROM ag_catalog.cypher('case_graph', $$
+            MATCH (a:Case), (b:Case)
+            WHERE a.id = '{id_from}' AND b.id = '{id_to}'
+            CREATE (a)-[\:CITES]->(b)
+            RETURN a, b
+        $$) AS (a ag_catalog.agtype, b ag_catalog.agtype);
+        """
+        await session.execute(text(cypher_query))
+
+    await session.commit()
+    logger.info("Edges created successfully in the `case_graph` based on citation relationships.")
+
+
+def sanitize_case_text(text):
+    """
+    Sanitize the case text to escape problematic characters.
+    """
+    if text is None:
+        return ""
+
+    # Escape single quotes by doubling them
+    sanitized_text = text.replace("'", "")
+
+    # Replace curly quotes with straight quotes
+    sanitized_text = sanitized_text.replace("“", '"').replace("”", '"')
+
+    # Replace en dash and em dash with simple dashes
+    sanitized_text = sanitized_text.replace("–", "-").replace("—", "-")
+
+    # Escape backslashes by doubling them
+    sanitized_text = sanitized_text.replace("\\", "\\\\")
+
+    sanitized_text = sanitized_text.replace("$", "")
+
+    # Escape newlines and carriage returns
+    sanitized_text = sanitized_text.replace("\n", "\\n").replace("\r", "\\r")
+
+    return sanitized_text
 
 
 async def main():

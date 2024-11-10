@@ -4,7 +4,6 @@ import sys
 
 import psycopg2
 from dotenv import load_dotenv
-from psycopg2.extras import Json
 
 # Load environment variables
 load_dotenv()
@@ -17,21 +16,13 @@ logger = logging.getLogger("graph_db_ingestion")
 conn_params = {
     "dbname": os.getenv("POSTGRES_DATABASE", "postgres"),
     "user": os.getenv("POSTGRES_USERNAME", "postgres"),
-    "password": os.getenv("POSTGRES_PASSWORD", "postgres"),
+    "password": "Passwd34!",
     "host": os.getenv("POSTGRES_HOST", "localhost"),
     "port": os.getenv("POSTGRES_PORT", "5432"),
 }
 
 # Batch size (number of rows to process in each batch)
 BATCH_SIZE = 100
-
-
-def drop_age_graph(conn, graph_name):
-    with conn.cursor() as cur:
-        # Drop the graph using ag_catalog.drop_graph with cascade
-        cur.execute(f"SELECT * FROM ag_catalog.drop_graph('{graph_name}', true);")
-        conn.commit()
-        logger.info(f"Graph '{graph_name}' dropped successfully.")
 
 
 def setup_age_graph(conn):
@@ -46,19 +37,9 @@ def setup_age_graph(conn):
 
         conn.commit()
 
-        # # Check if the graph already exists
-        # cur.execute(f"SELECT * FROM ag_catalog.ag_graph WHERE name = '{graph_name}';")
-        # graph_exists = cur.fetchone()
+        cur.execute(f"SELECT create_graph('{graph_name}');")
 
-        # if graph_exists:
-        #     # If the graph exists, drop it
-        #     logger.info(f"Graph '{graph_name}' already exists. Dropping it.")
-        #     drop_age_graph(conn, graph_name)
-
-        # # Create the new graph
-        # cur.execute(f"SELECT create_graph('{graph_name}');")
-
-        # conn.commit()
+        conn.commit()
 
         logger.info(f"Graph '{graph_name}' created successfully in Apache AGE.")
 
@@ -71,8 +52,8 @@ def ingest_cases_to_graph_from_postgresql(conn):
     with conn.cursor() as cur:
         # Query only the specific text from the 'opinions' field of the 'casebody'
         cur.execute("""
-            SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
-            FROM cases;
+            SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text, summary AS summary
+            FROM cases_summary;
         """)
         cases = cur.fetchall()
 
@@ -83,22 +64,32 @@ def ingest_cases_to_graph_from_postgresql(conn):
         max_errors = 3  # Stop after 3 errors
 
         for case in cases:
-            case_id, case_text = case
+            case_id, case_text, case_summary = case
 
             # Log the case ID and text to understand what's being processed
             logger.info(f"Processing case {case_id}")
             logger.debug(f"Case text: {case_text}")
+            logger.debug(f"Case Summary: {case_summary}")
 
-            case_data_json = Json(case_text)
+            case_summary_sanitized = sanitize_case_text(case_summary)
+            # case_data_json = Json(case_text)
             try:
                 # Use parameterized query to insert the case_id and case_text
+                # cur.execute(
+                #     """
+                #     SELECT * FROM cypher('case_graph', $$
+                #         CREATE (c:Case {id: %s, text: %s::jsonb})
+                #     $$) AS (c agtype);
+                # """,
+                #     (case_id, case_data_json),
+                # )
                 cur.execute(
                     """
                     SELECT * FROM cypher('case_graph', $$ 
-                        CREATE (c:Case {id: %s, text: %s::jsonb})
+                        CREATE (c:Case {id: %s, summary: %s})
                     $$) AS (c agtype);
-                """,
-                    (case_id, case_data_json),
+                    """,
+                    (case_id, case_summary_sanitized),
                 )
 
                 processed_rows += 1
@@ -153,49 +144,6 @@ def sanitize_case_text(text):
     sanitized_text = sanitized_text.replace("\n", "\\n").replace("\r", "\\r")
 
     return sanitized_text
-
-
-def ingest_cases_to_graph_from_postgresql(conn):
-    """
-    Ingest specific case text from PostgreSQL `cases` table and create nodes in the graph.
-    Continue processing even after encountering errors.
-    """
-    with conn.cursor() as cur:
-        # Query only the specific text from the 'opinions' field of the 'casebody'
-        cur.execute("""
-            SELECT id, data -> 'casebody' -> 'opinions' -> 0 ->> 'text' AS text
-            FROM cases;
-        """)
-        cases = cur.fetchall()
-
-        processed_rows = 0
-        total_rows = len(cases)
-
-        for case in cases:
-            case_id, case_text = case
-
-            sanitized_text = sanitize_case_text(case_text)
-            # Use parameterized query to insert the case_id and case_text
-            cur.execute(
-                """
-                SELECT * FROM cypher('case_graph', $$ 
-                    CREATE (c:Case {id: %s, text: %s})
-                $$) AS (c agtype);
-            """,
-                (case_id, sanitized_text),
-            )
-
-            processed_rows += 1
-            print_progress(processed_rows, total_rows)
-
-            # Commit every batch to ensure data is persisted
-            if processed_rows % BATCH_SIZE == 0:
-                conn.commit()
-
-        # Final commit after the loop
-        conn.commit()
-
-        logger.info(f"Inserted {processed_rows} case nodes into the graph from the PostgreSQL `cases` table.")
 
 
 def create_edges_in_graph_from_postgresql(conn, batch_size=10):
@@ -303,10 +251,10 @@ def main():
         setup_age_graph(conn)
 
         # Step 2: Ingest cases as nodes into the graph from PostgreSQL
-        # ingest_cases_to_graph_from_postgresql(conn)
+        ingest_cases_to_graph_from_postgresql(conn)
 
         # Step 3: Create edges based on 'cites_to' references from PostgreSQL
-        create_edges_in_graph_from_postgresql(conn)
+        # create_edges_in_graph_from_postgresql(conn)
 
 
 if __name__ == "__main__":

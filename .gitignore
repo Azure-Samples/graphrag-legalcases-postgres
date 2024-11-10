@@ -7,3 +7,6 @@ Data_ingestion/.ipynb_checkpoints
 /src/frontend/node_modules/
 */package-lock.json
 .azure
+__pycache__/
+*.js.map
+*.pyc
