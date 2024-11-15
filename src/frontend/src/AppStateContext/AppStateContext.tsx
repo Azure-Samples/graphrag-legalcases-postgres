@@ -5,6 +5,8 @@ import { PAIDRetrievalMode } from "../api/models";
 interface AppStateContextType {
   sharedState: PAIDRetrievalMode;
   setSharedState: React.Dispatch<React.SetStateAction<PAIDRetrievalMode>>;
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 // Create the context with a default value of undefined
@@ -13,9 +15,10 @@ export const AppStateContext = createContext<AppStateContextType | undefined>(un
 // Create the AppStateProvider component to manage shared state
 export const AppStateProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [sharedState, setSharedState] = useState<PAIDRetrievalMode>(PAIDRetrievalMode.Vector);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   return (
-    <AppStateContext.Provider value={{ sharedState, setSharedState }}>
+    <AppStateContext.Provider value={{ sharedState, setSharedState, isLoading, setIsLoading }}>
       {children}
     </AppStateContext.Provider>
   );

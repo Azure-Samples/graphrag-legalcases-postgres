@@ -124,8 +124,7 @@ rrf AS (
 )
 select label,score,graph_rank,semantic_rank,vector_rank,id,case_name,"date","data",refs,relevance
 FROM rrf
-order by semantic_rank;
---score DESC;
+order by score DESC;
 
 
 -- Demo dataset
@@ -143,7 +142,7 @@ vector AS (
     FROM cases, embedding_query
     WHERE (cases.data#>>'{court, id}')::integer IN (9029)--, 8985) -- Washington Supreme Court (9029) or Washington Court of Appeals (8985)
     ORDER BY description_vector <=> embedding
-    LIMIT 60
+    LIMIT 100
 ),
 graph AS (
     SELECT vector.id, graph_query.ref_id
@@ -158,6 +157,39 @@ select distinct ref_id from graph;
 --select count(*) from cases c 
 --where c.id in (select id from graph)
 --	  or c.id in (select ref_id from graph);
+
+select * from temp_cases;
+
+-- Refs query
+			-- top10 graph
+			-- WHERE n.case_id IN ['615468','4975399','1034620','1127907','1095193','1186056','4953587','2601920','594079','1279441']
+			-- top60
+			-- WHERE n.case_id IN ['615468','4975399','1034620','1127907','1095193','1186056','4953587','2601920','594079','1279441','481657','4938756','1057244','1091260','1346648','768356','630224','5008594','821843','2532786','1005731','1017660','566840','645120','478590','1086651','634444','798646','838633','802199','2580977','849973','1008408','867981','859403','478705','591482','772283','622621','561149','828223','4920250','999494','4912975','1036909','782330','960808','1043159','4933418','812042','674990','869848','762351','1127960','5041745','552773','685636','558730','842483','2525134']
+            -- top10 semantic
+			-- WHERE n.case_id IN ['615468','1034620','481657','594079','4975399','630224','1346648','768356','1095193','1005731']
+			-- top10 vector
+			-- WHERE n.case_id IN ['615468','768356','674990','4938756','5041745','1017660','1346648','630224','594079','782330']
+
+
+select ref_id, count(case_id) as c
+from cypher('case_graph', $$
+            MATCH (s)-[r:REF]->(n)
+            WHERE n.case_id IN ['615468','4975399','1034620','1127907','1095193','1186056','4953587','2601920','594079','1279441']
+			RETURN n.case_id AS case_id, s.case_id AS ref_id
+        $$) as graph_query(case_id TEXT, ref_id TEXT)
+group by ref_id
+order by c DESC, ref_id;
+
+select ref_id, case_id as c
+from cypher('case_graph', $$
+            MATCH (s)-[r:REF]->(n)
+            WHERE s.case_id IN ['1036918','1712225','240463'] and 
+				  n.case_id IN ['615468','4975399','1034620','1127907','1095193','1186056','4953587','2601920','594079','1279441']
+			RETURN n.case_id AS case_id, s.case_id AS ref_id
+        $$) as graph_query(case_id TEXT, ref_id TEXT)
+order by ref_id;
+
+
 
 -- Unoptimized final query
 -- Recall:    40% -> 60% -> 70%
@@ -425,7 +457,6 @@ rrf AS (
 SELECT * 
 FROM rrf
 order by score DESC;
-
 
 with t2 as (
 	select RANK() OVER (ORDER BY ref_rel DESC) AS ref_sem_rank, cases.data#>>'{court, name}' AS ref_court, cases.data as ref_data, t1.*

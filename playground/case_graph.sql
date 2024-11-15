@@ -278,12 +278,14 @@ FROM gedges;
 drop index case_graph.case_graph_idx_on_case_id;
 -- doesn't work for WHERE IN clauses
 CREATE INDEX case_graph_idx_on_case_id ON case_graph."case" USING gin (properties);
+CREATE INDEX case_graph_idx_on_case_id_2 ON case_graph."case" (id);
 -- works for WHERE IN clauses
 CREATE INDEX CONCURRENTLY case_graph_ex_idx ON case_graph."case"
 (ag_catalog.agtype_access_operator(properties, '"case_id"'::agtype));
 
 CREATE INDEX case_graph_idx_on_end_id ON case_graph."REF" (end_id);
 CREATE INDEX case_graph_idx_on_start_id ON case_graph."REF" (start_id);
+ALTER TABLE case_graph."REF" CLUSTER ON case_graph_idx_on_end_id;
 
 SELECT * from cypher('case_graph', $$ EXPLAIN ANALYZE
 					MATCH ()-[r:REF]->(n)
@@ -301,3 +303,27 @@ SELECT * from cypher('case_graph', $$
                     MATCH ()-[r]->()
                     RETURN count(r)
                 $$) as (r agtype);
+                
+explain analyze
+select g.gold_id, graph_query.ref_id from gold_dataset g
+LEFT JOIN cypher('case_graph', $$
+        MATCH (s)-[r:REF]->(n)
+        RETURN n.case_id AS case_id, s.case_id AS ref_id
+    $$) as graph_query(case_id TEXT, ref_id TEXT)
+ON g.gold_id = graph_query.case_id
+--where gold_id = '782330';
+where label like 'gold-%';
+
+explain analyze
+select * from cypher('case_graph', $$
+        MATCH (s)-[r:REF]->(n)
+        RETURN n.case_id AS case_id, s.case_id AS ref_id
+    $$) as graph_query(case_id TEXT, ref_id TEXT)
+where case_id in ('615468', '1095193', '1034620', '1186056', '1127907', '594079', '2601920', '1005731', '768356', '1017660', '473788');
+
+explain analyze
+select * from cypher('case_graph', $$
+        MATCH (s)-[r:REF]->(n)
+		where n.case_id in ['615468', '1095193', '1034620', '1186056', '1127907', '594079', '2601920', '1005731', '768356', '1017660', '473788']
+        RETURN n.case_id AS case_id, s.case_id AS ref_id
+    $$) as graph_query(case_id TEXT, ref_id TEXT);

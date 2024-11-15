@@ -15,12 +15,23 @@ const Layout = () => {
     if (!appStateContext) {
         throw new Error('Layout component must be used within an AppStateProvider');
     }
-    const { sharedState, setSharedState } = appStateContext;
+    const { sharedState, setSharedState, isLoading, setIsLoading } = appStateContext;
 
     const handleModeChange = (event: { target: { value: SetStateAction<string>; }; }) => {
         setSelectedMode(event.target.value);
+        const newValue = event.target.value as PAIDRetrievalMode;
         console.log("handleModeChange: " + (event.target.value as PAIDRetrievalMode).toString());
-        setSharedState((prev: any) => (event.target.value as PAIDRetrievalMode));
+        if (sharedState == PAIDRetrievalMode.Vector && (newValue == PAIDRetrievalMode.Semantic || newValue == PAIDRetrievalMode.GraphRAG) ||
+            sharedState == PAIDRetrievalMode.Semantic && newValue == PAIDRetrievalMode.GraphRAG) {
+            // Show loading screen for 1 second
+            setIsLoading(true);
+            setTimeout(() => {
+                setIsLoading(false);
+                setSharedState(newValue);
+            }, 1000);
+        } else {
+            setSharedState(newValue);
+        }
     };
 
     return (
@@ -67,7 +78,7 @@ const Layout = () => {
                     <h4 className={styles.headerRightText}>Demo: GraphRAG on PostgreSQL</h4>
                 </div>
             </header>
-
+            
             <Outlet />
         </div>
     );

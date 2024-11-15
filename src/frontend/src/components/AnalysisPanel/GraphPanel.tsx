@@ -9,6 +9,7 @@ import styles from "./AnalysisPanel.module.css";
 
 import { Thoughts, PAIDRetrievalMode } from "../../api";
 import { AppStateContext } from '../../AppStateContext/AppStateContext';
+import Loading from './Loading';
 
 SyntaxHighlighter.registerLanguage("json", json);
 
@@ -25,7 +26,7 @@ export const GraphPanel = ({ thoughts }: Props) => {
     if (!appStateContext) {
         throw new Error('Layout component must be used within an AppStateProvider');
     }
-    const { sharedState, setSharedState } = appStateContext;
+    const { sharedState, setSharedState, isLoading, setIsLoading } = appStateContext;
 
     const decodeSelection = (vector: number, semantic: number, graph: number) => {
         switch (sharedState) {
@@ -57,24 +58,24 @@ export const GraphPanel = ({ thoughts }: Props) => {
         { data: { id: '615468',  refs: convertRefs(5),  selection: decodeSelection(1,1,1), color: '#ed8035', label: 'Le Vette v. Hardman Estate' }, position: { x: 850, y: 600 } },
         { data: { id: '4975399', refs: convertRefs(12), selection: decodeSelection(0,1,1), color: '', label: 'Laurelon Terrace, Inc. v. City of Seattle' }, position: { x: 1100, y: 320 } }, //selected in semantic
         { data: { id: '1034620', refs: convertRefs(5),  selection: decodeSelection(0,1,1), color: '#ed8035', label: 'Jorgensen v. Massart' }, position: { x: 250, y: 220 } },
-        { data: { id: '1127907', refs: convertRefs(22), selection: decodeSelection(0,0,1), color: '#ed8035', label: 'Foisy v. Wyman' }, position: { x: 700, y: 180 } },
+        { data: { id: '1127907', refs: convertRefs(22), selection: decodeSelection(0,0,1), color: '#ed8035', label: 'Foisy v. Wyman' }, position: { x: 740, y: 190 } },
         { data: { id: '1095193', refs: convertRefs(7),  selection: decodeSelection(0,1,1), color: '#ed8035', label: 'Thomas v. Housing Authority' }, position: { x: 430, y: 300 } },
         { data: { id: '1186056', refs: convertRefs(40), selection: decodeSelection(0,0,1), color: '#ed8035', label: 'Stuart v. Coldwell Banker Commercial Group, Inc.' }, position: { x: 950, y: 140 } },
         { data: { id: '4953587', refs: convertRefs(13), selection: decodeSelection(0,0,1), color: '', label: 'Schedler v. Wagner' }, position: { x: 800, y: 350 } },
         { data: { id: '2601920', refs: convertRefs(10), selection: decodeSelection(0,0,1), color: '#ed8035', label: 'Pappas v. Zerwoodis' }, position: { x: 500, y: 400 } },
         { data: { id: '594079',  refs: convertRefs(1),  selection: decodeSelection(1,1,1), color: '#ed8035', label: 'Martindale Clothing Co. v. Spokane & Eastern Trust Co.' }, position: { x: 530, y: 590 } },
-        { data: { id: '1279441', refs: convertRefs(9),  selection: decodeSelection(0,0,1), color: '', label: 'Tope v. King County' }, position: { x: 950, y: 490 } },
+        { data: { id: '1279441', refs: convertRefs(9),  selection: decodeSelection(0,0,1), color: '', label: 'Tope v. King County' }, position: { x: 1010, y: 470 } },
 
         // GraphRAG Refs
         { data: { id: '615468-1',  refs: 15 }, position: { x: 820, y: 540 } }, // { x: 850, y: 660 } }
         { data: { id: '4975399-1',  refs: 15 }, position: { x: 1070, y: 260 } }, // { x: 1100, y: 320 } }
         { data: { id: '4975399-2',  refs: 15 }, position: { x: 1130, y: 260 } }, // { x: 1100, y: 320 } }
         { data: { id: '1034620-1',  refs: 15 }, position: { x: 280, y: 160 } }, // { x: 250, y: 220 } }
-        { data: { id: '1127907-1',  refs: 15 }, position: { x: 670, y: 100 } }, // { x: 700, y: 180 } }
-        { data: { id: '1127907-2',  refs: 15 }, position: { x: 730, y: 100 } }, // { x: 700, y: 180 } }
-        { data: { id: '1127907-3',  refs: 15 }, position: { x: 630, y: 125 } }, // { x: 700, y: 180 } }
-        { data: { id: '1127907-4',  refs: 15 }, position: { x: 770, y: 125 } }, // { x: 700, y: 180 } }
-        { data: { id: '1095193-1',  refs: 15 }, position: { x: 460, y: 240 } }, // { x: 430, y: 300 } }
+        { data: { id: '1127907-1',  refs: 15 }, position: { x: 710, y: 110 } }, // { x: 700, y: 180 } }
+        { data: { id: '1127907-2',  refs: 15 }, position: { x: 770, y: 110 } }, // { x: 700, y: 180 } }
+        { data: { id: '1127907-3',  refs: 15 }, position: { x: 670, y: 135 } }, // { x: 700, y: 180 } }
+        { data: { id: '1127907-4',  refs: 15 }, position: { x: 810, y: 135 } }, // { x: 700, y: 180 } }
+        { data: { id: '1095193-1',  refs: 15 }, position: { x: 400, y: 240 } }, // { x: 430, y: 300 } }
         { data: { id: '1186056-1',  refs: 15 }, position: { x: 930, y: 10 } }, // { x: 950, y: 140 } }
         { data: { id: '1186056-2',  refs: 15 }, position: { x: 970, y: 10 } }, // { x: 950, y: 140 } }
         { data: { id: '1186056-3',  refs: 15 }, position: { x: 900, y: 16 } }, // { x: 950, y: 140 } }
@@ -88,17 +89,19 @@ export const GraphPanel = ({ thoughts }: Props) => {
         { data: { id: '2601920-1',  refs: 15 }, position: { x: 470, y: 340 } }, // { x: 500, y: 400 } }
         { data: { id: '2601920-2',  refs: 15 }, position: { x: 530, y: 340 } }, // { x: 500, y: 400 } }
         { data: { id: '594079-1',  refs: 15 }, position: { x: 500, y: 530 } }, // { x: 530, y: 650 } }
-        { data: { id: '1279441-1',  refs: 15 }, position: { x: 920, y: 430 } }, // { x: 950, y: 550 } }
-        { data: { id: '1279441-2',  refs: 15 }, position: { x: 980, y: 430 } }, // { x: 950, y: 550 } }
+        { data: { id: '1279441-1',  refs: 15 }, position: { x: 980, y: 410 } }, // { x: 950, y: 550 } }
+        { data: { id: '1279441-2',  refs: 15 }, position: { x: 1040, y: 410 } }, // { x: 950, y: 550 } }
 
         // Edges from Graph Refs
         { data: { source: '615468-1', target: '615468' }, classes: 'directed' },
         { data: { source: '4975399-1', target: '4975399' }, classes: 'directed' },
+        { data: { source: '4975399-1', target: '1279441' }, classes: 'directed' },
         { data: { source: '4975399-2', target: '4975399' }, classes: 'directed' },
         { data: { source: '1034620-1', target: '1034620' }, classes: 'directed' },
         { data: { source: '1127907-1', target: '1127907' }, classes: 'directed' },
         { data: { source: '1127907-2', target: '1127907' }, classes: 'directed' },
         { data: { source: '1127907-3', target: '1127907' }, classes: 'directed' },
+        { data: { source: '1127907-3', target: '1095193' }, classes: 'directed' },
         { data: { source: '1127907-4', target: '1127907' }, classes: 'directed' },
         { data: { source: '1095193-1', target: '1095193' }, classes: 'directed' },
         { data: { source: '1186056-1', target: '1186056' }, classes: 'directed' },
@@ -108,6 +111,7 @@ export const GraphPanel = ({ thoughts }: Props) => {
         { data: { source: '1186056-5', target: '1186056' }, classes: 'directed' },
         { data: { source: '1186056-6', target: '1186056' }, classes: 'directed' },
         { data: { source: '1186056-7', target: '1186056' }, classes: 'directed' },
+        { data: { source: '1186056-7', target: '1127907' }, classes: 'directed' },
         { data: { source: '1186056-8', target: '1186056' }, classes: 'directed' },
         { data: { source: '4953587-1', target: '4953587' }, classes: 'directed' },
         { data: { source: '4953587-2', target: '4953587' }, classes: 'directed' },
@@ -146,6 +150,7 @@ export const GraphPanel = ({ thoughts }: Props) => {
                  className={styles.graphRecall}>
                 Recall: <span style={{ color: decode('red', '#0fd406', '#0fd406') }}>{decode('40%', '60%', '70%')}</span>
             </div>
+            {isLoading && <Loading />}
             <CytoscapeComponent 
                 elements={elements} 
                 className={styles.graphContainer} 
