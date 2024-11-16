@@ -94,9 +94,6 @@
       },
       "azureMLEndpointKey": {
         "value": "${AZURE_ML_ENDPOINT_KEY}"
-      },
-      "tempUserPassword": {
-        "value": "${TEMP_USER_PASSWORD}"
       }
     }
 }

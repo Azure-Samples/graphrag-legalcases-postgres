@@ -34,6 +34,11 @@ async def assign_role_for_webapp(engine, app_identity_name):
             )
         )
 
+        # New grants on ag_catalog schema
+        await conn.execute(text(f'GRANT USAGE ON SCHEMA ag_catalog TO "{app_identity_name}"'))
+        await conn.execute(text(f'GRANT ALL ON SCHEMA ag_catalog TO "{app_identity_name}"'))
+        await conn.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ag_catalog TO "{app_identity_name}"'))
+
     await conn.close()
 
 

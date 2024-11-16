@@ -38,9 +38,6 @@ param allowedSingleIPs array = []
 // PostgreSQL version
 param version string
 
-@secure()
-param tempUserPassword string
-
 
 var authProperties = authType == 'Password' ? {
   administratorLogin: administratorLogin
@@ -127,6 +124,19 @@ resource configurations 'Microsoft.DBforPostgreSQL/flexibleServers/configuration
   }
   dependsOn: [
     addAddUser, firewall_all, firewall_azure, firewall_single
+  ]
+}
+
+// Configuration for shared_preload_libraries
+resource sharedPreloadLibrariesConfig 'Microsoft.DBforPostgreSQL/flexibleServers/configurations@2023-03-01-preview' = {
+  name: 'shared_preload_libraries'
+  parent: postgresServer
+  properties: {
+    value: 'age'
+    source: 'user-override'
+  }
+  dependsOn: [
+    configurations // Ensure it depends on azure.extensions configuration
   ]
 }
 

@@ -75,12 +75,10 @@ class Item(Base):
 
 
 class Case(Base):
-    __tablename__ = "cases_summary"
+    __tablename__ = "cases_updated"
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     data: Mapped[MutableDict] = mapped_column(MutableDict.as_mutable(JSONB), nullable=False)
     description_vector: Mapped[Vector] = mapped_column(Vector(1536), nullable=True)
-    summary: Mapped[str] = mapped_column(Text, nullable=True)
-    summary_vector: Mapped[Vector] = mapped_column(Vector(1536), nullable=True)
 
     def to_dict(self, include_vectors: bool = False):
         """
@@ -89,7 +87,6 @@ class Case(Base):
         model_dict = {column.name: getattr(self, column.name) for column in self.__table__.columns}
         if not include_vectors:
             model_dict.pop("description_vector", None)
-            model_dict.pop("summary_vector", None)
         return model_dict
 
     def to_str_for_rag(self):
@@ -135,12 +132,4 @@ index_description_vector = Index(
     postgresql_using="hnsw",
     postgresql_with={"m": 16, "ef_construction": 64},
     postgresql_ops={"description_vector": "vector_cosine_ops"},
-)
-
-index_summary_vector = Index(
-    f"{table_name}_summary_vector_idx",
-    Case.summary_vector,
-    postgresql_using="hnsw",
-    postgresql_with={"m": 16, "ef_construction": 64},
-    postgresql_ops={"summary_vector": "vector_cosine_ops"},
 )

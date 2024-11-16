@@ -76,10 +76,6 @@ param azureMLScoringEndpoint string
 param azureMLEndpointKey string
 
 @secure()
-@description('Temp User Pwd')
-param tempUserPassword string
-
-@secure()
 param openAIComKey string = ''
 
 param azureOpenAIAPIVersion string = '2023-05-15'
@@ -193,7 +189,6 @@ module postgresServer 'core/database/postgresql/flexibleserver.bicep' = {
     entraAdministratorType: postgresEntraAdministratorType
     allowAzureIPsFirewall: true
     allowAllIPsFirewall: true // Necessary for post-provision script, can be disabled after
-    tempUserPassword: tempUserPassword
   }
 }
 
@@ -346,10 +341,6 @@ var webAppEnv = union(azureOpenAIKeyEnv, openAIComKeyEnv, [
   {
     name: 'AZURE_ML_ENDPOINT_KEY'
     value: azureMLEndpointKey
-  }
-  {
-    name: 'TEMP_USER_PASSWORD'
-    value: tempUserPassword
   }
 ])
 

@@ -14,7 +14,7 @@ logger = logging.getLogger("legalcaseapp")
 
 async def create_db_schema(engine):
     async with engine.begin() as conn:
-        logger.info("Enabling azure_ai extension as temp_user...")
+        logger.info("Enabling azure_ai extension...")
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS azure_ai"))
 
         logger.info("Enabling the pgvector extension for Postgres...")
@@ -25,7 +25,6 @@ async def create_db_schema(engine):
         endpoint_key = os.getenv("AZURE_ML_ENDPOINT_KEY")
 
         print("scoring_endpoint == ", scoring_endpoint)
-        print("endpoint_key == ", endpoint_key)
 
         if not scoring_endpoint or not endpoint_key:
             logger.error(
@@ -66,7 +65,8 @@ async def create_db_schema(engine):
 
         # Enable the Apache AGE extension and load the library
         logger.info("Enabling the Apache AGE extension for Postgres...")
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS age"))
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS age;"))
+        await conn.execute(text('SET search_path = ag_catalog, "$user", public;'))
 
     await conn.close()
 

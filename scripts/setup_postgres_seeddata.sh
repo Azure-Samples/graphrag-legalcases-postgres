@@ -5,7 +5,8 @@ if [ $? -ne 0 ]; then
 fi
 POSTGRES_USERNAME=$(azd env get-value POSTGRES_USERNAME)
 POSTGRES_DATABASE=$(azd env get-value POSTGRES_DATABASE)
+APP_IDENTITY_NAME=$(azd env get-value SERVICE_WEB_IDENTITY_NAME)
 
 . ./scripts/load_python_env.sh
 
-.venv/bin/python ./src/backend/fastapi_app/setup_postgres_legal_seeddata.py --host $POSTGRES_HOST --username $POSTGRES_USERNAME --database $POSTGRES_DATABASE
+.venv/bin/python ./src/backend/fastapi_app/setup_postgres_legal_seeddata.py --host $POSTGRES_HOST --username $POSTGRES_USERNAME --database $POSTGRES_DATABASE  --app-identity-name $APP_IDENTITY_NAME
