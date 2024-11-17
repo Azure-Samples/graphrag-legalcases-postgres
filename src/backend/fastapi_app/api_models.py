@@ -17,15 +17,15 @@ class Message(BaseModel):
 
 
 class RetrievalMode(str, Enum):
-    TEXT = "text"
-    VECTORS = "vectors"
-    HYBRID = "hybrid"
+    VECTOR = "Vector Search"
+    SEMANTIC = "Semantic Ranker"
+    GRAPHRAG = "GraphRAG"
 
 
 class ChatRequestOverrides(BaseModel):
     top: int = 3
     temperature: float = 0.3
-    retrieval_mode: RetrievalMode = RetrievalMode.HYBRID
+    retrieval_mode: RetrievalMode = RetrievalMode.VECTOR
     use_advanced_flow: bool = True
     prompt_template: str | None = None
 

@@ -24,8 +24,6 @@ async def create_db_schema(engine):
         scoring_endpoint = os.getenv("AZURE_ML_SCORING_ENDPOINT")
         endpoint_key = os.getenv("AZURE_ML_ENDPOINT_KEY")
 
-        print("scoring_endpoint == ", scoring_endpoint)
-
         if not scoring_endpoint or not endpoint_key:
             logger.error(
                 "Azure ML endpoint settings are missing. Please set AZURE_ML_SCORING_ENDPOINT and AZURE_ML_ENDPOINT_KEY in the environment."

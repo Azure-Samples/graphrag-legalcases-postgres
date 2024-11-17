@@ -10,3 +10,4 @@ Data_ingestion/.ipynb_checkpoints
 __pycache__/
 *.js.map
 *.pyc
+src/backend/static/assets/*

@@ -39,7 +39,6 @@ async def common_parameters():
     Get the common parameters for the FastAPI app
     """
     OPENAI_EMBED_HOST = os.getenv("OPENAI_EMBED_HOST")
-    print("OpenAI Embed Host", OPENAI_EMBED_HOST)
     OPENAI_CHAT_HOST = os.getenv("OPENAI_CHAT_HOST")
     if OPENAI_EMBED_HOST == "azure":
         openai_embed_deployment = os.getenv("AZURE_OPENAI_EMBED_DEPLOYMENT", "text-embedding-3-small")
@@ -66,7 +65,6 @@ async def common_parameters():
     else:
         openai_chat_deployment = None
         openai_chat_model = os.getenv("OPENAICOM_CHAT_MODEL", "gpt-3.5-turbo")
-    print("OpenAI Embeddding Column", embedding_column)
     return FastAPIAppContext(
         openai_chat_model=openai_chat_model,
         openai_embed_model=openai_embed_model,

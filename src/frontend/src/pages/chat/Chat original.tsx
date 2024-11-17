@@ -115,7 +115,7 @@ const Chat = () => {
                     overrides: {
                         use_advanced_flow: useAdvancedFlow,
                         top: retrieveCount,
-                        retrieval_mode: retrievalMode,
+                        // retrieval_mode: retrievalMode,
                         prompt_template: promptTemplate.length === 0 ? undefined : promptTemplate,
                         temperature: temperature
                     }

@@ -157,8 +157,8 @@ async def ingest_cases_to_graph_from_postgresql(session, app_identity_name):
     logger.info("case_graph database is created successfully.")
 
     # New grants on case_graph schema
-    await session.execute(text(f"GRANT ALL ON SCHEMA case_graph TO '{app_identity_name}';"))
-    await session.execute(text(f"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO '{app_identity_name}';"))
+    await session.execute(text(f'GRANT ALL ON SCHEMA case_graph TO "{app_identity_name}";'))
+    await session.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{app_identity_name}";'))
     await session.commit()
     logger.info("Granted permissions to the case_graph schema.")
 
@@ -234,8 +234,8 @@ async def create_edges_from_citations(session):
 
 async def create_plpgsql_functions(session):
     # Define the get_vector_pagerank_rrf_cases function
-    function_definition = text("""
-        CREATE OR REPLACE FUNCTION get_vector_pagerank_rrf_cases(
+    function_graphrag = text("""
+        CREATE OR REPLACE FUNCTION get_vector_semantic_graphrag_cases(
             query_text TEXT,
             embedding VECTOR,
             top_n INT,
@@ -347,9 +347,122 @@ async def create_plpgsql_functions(session):
         END;
         $_$ LANGUAGE plpgsql;
     """)
-    await session.execute(function_definition)
+    await session.execute(function_graphrag)
     await session.commit()
-    logger.info("Function get_vector_pagerank_rrf_cases defined successfully.")
+    logger.info("Function get_vector_semantic_graphrag_cases defined successfully.")
+
+    function_vector = text("""
+        CREATE OR REPLACE FUNCTION get_vector_cases(
+            query_text TEXT,
+            embedding VECTOR,
+            top_n INT
+        )
+        RETURNS TABLE (
+            id               TEXT,
+            case_name        TEXT,
+            date             TEXT,
+            data             JSONB,
+            vector_rank      BIGINT
+        ) AS $_$
+        BEGIN
+            SET search_path = ag_catalog, "$user", public;
+
+            RETURN QUERY
+            SELECT 
+                cases_updated.id,
+                cases_updated.data#>>'{name_abbreviation}' AS case_name,
+                cases_updated.data#>>'{decision_date}' AS date,
+                cases_updated.data,
+                RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+            FROM cases_updated
+            WHERE (cases_updated.data#>>'{court, id}')::integer IN (9029)
+            ORDER BY description_vector <=> embedding
+            LIMIT top_n;
+        END;
+        $_$ LANGUAGE plpgsql;
+    """)
+    await session.execute(function_vector)
+    await session.commit()
+    logger.info("Function get_vector_cases defined successfully.")
+
+    function_semantic = text("""
+        CREATE OR REPLACE FUNCTION get_vector_semantic_cases(
+            query_text TEXT,
+            embedding VECTOR,
+            top_n INT,
+            consider_n INT
+        )
+        RETURNS TABLE (
+            id               TEXT,
+            case_name        TEXT,
+            date             TEXT,
+            data             JSONB,
+            vector_rank      BIGINT,
+            semantic_rank    BIGINT,
+            relevance        DOUBLE PRECISION
+        ) AS $_$
+        BEGIN
+            SET search_path = ag_catalog, "$user", public;
+
+            RETURN QUERY
+            WITH vector AS (
+                SELECT cases_updated.id,
+                    cases_updated.data#>>'{name_abbreviation}' AS case_name,
+                    cases_updated.data#>>'{decision_date}' AS date,
+                    cases_updated.data,
+                    RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+                FROM cases_updated
+                WHERE (cases_updated.data#>>'{court, id}')::integer IN (9029)
+                ORDER BY description_vector <=> embedding
+                LIMIT consider_n
+            ),
+            json_payload AS (
+                SELECT jsonb_build_object(
+                    'pairs', 
+                    jsonb_agg(
+                        jsonb_build_array(
+                            query_text, 
+                            LEFT(vector.data -> 'casebody' -> 'opinions' -> 0 ->> 'text', 800)
+                        )
+                    )
+                ) AS json_pairs
+                FROM vector
+            ),
+            semantic AS (
+                SELECT elem.relevance::DOUBLE precision AS relevance, elem.ordinality
+                FROM json_payload AS jp,
+                    LATERAL jsonb_array_elements(
+                        azure_ml.invoke(
+                            jp.json_pairs,
+                            deployment_name => 'bge-v2-m3-1',
+                            timeout_ms => 180000
+                        )
+                    ) WITH ORDINALITY AS elem(relevance)
+            ),
+            semantic_ranked AS (
+                SELECT RANK() OVER (ORDER BY semantic.relevance DESC) AS semantic_rank,
+                    semantic.*, vector.*
+                FROM vector
+                JOIN semantic ON vector.vector_rank = semantic.ordinality
+                ORDER BY semantic.relevance DESC
+            )
+            SELECT 
+                semantic_ranked.id, 
+                semantic_ranked.case_name, 
+                semantic_ranked.date, 
+                semantic_ranked.data, 
+                semantic_ranked.vector_rank, 
+                semantic_ranked.semantic_rank, 
+                semantic_ranked.relevance
+            FROM semantic_ranked
+            ORDER BY semantic_rank
+            LIMIT top_n;
+        END;
+        $_$ LANGUAGE plpgsql;
+    """)
+    await session.execute(function_semantic)
+    await session.commit()
+    logger.info("Function get_vector_semantic_cases defined successfully.")
 
 
 def sanitize_case_text(text):

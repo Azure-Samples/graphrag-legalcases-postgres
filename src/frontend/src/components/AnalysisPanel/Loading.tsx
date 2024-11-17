@@ -6,7 +6,7 @@ const Loading: React.FC = () => {
   return (
     <Overlay className="loading-overlay">
       <Spinner
-        size={SpinnerSize.custom}
+        size={SpinnerSize.large}
         label="Loading..."
         styles={{
           root: { height: 'auto' },

@@ -1,10 +1,10 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useContext  } from "react";
 import { Panel, DefaultButton, TextField, SpinButton, Slider, Checkbox } from "@fluentui/react";
 import { SparkleFilled } from "@fluentui/react-icons";
 
 import styles from "./Chat.module.css";
 
-import { RetrievalMode, RAGChatCompletion, RAGChatCompletionDelta, ChatAppRequestOptions } from "../../api";
+import { RetrievalMode, RAGChatCompletion, RAGChatCompletionDelta, ChatAppRequestOptions, PAIDRetrievalMode } from "../../api";
 import { AIChatProtocolClient, AIChatMessage } from "@microsoft/ai-chat-protocol";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -13,16 +13,50 @@ import { UserChatMessage } from "../../components/UserChatMessage";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import { SettingsButton } from "../../components/SettingsButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
-import { VectorSettings } from "../../components/VectorSettings";
+import { AppStateContext } from '../../AppStateContext/AppStateContext';
 
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [temperature, setTemperature] = useState<number>(0.3);
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
-    const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
+    const [retrievalMode, setRetrievalMode] = useState<PAIDRetrievalMode>(PAIDRetrievalMode.Vector);
     const [useAdvancedFlow, setUseAdvancedFlow] = useState<boolean>(true);
     const [shouldStream, setShouldStream] = useState<boolean>(true);
+
+    const appStateContext = useContext(AppStateContext);
+    if (!appStateContext) {
+        throw new Error('Layout component must be used within an AppStateProvider');
+    }
+    const { sharedState, setSharedState } = appStateContext;
+
+    useEffect(() => {
+            console.log("appStateContext.sharedState:", appStateContext.sharedState);
+            setSharedState(appStateContext.sharedState);
+    }, [appStateContext]);
+
+    useEffect(() => {
+        console.log("sharedState changed:", sharedState);
+        switch (sharedState) {
+            case "Vector Search":
+                console.log("Vector Search");
+                setRetrievalMode(PAIDRetrievalMode.Vector);
+                break;
+            case "Semantic Ranker":
+                console.log("Semantic Ranker");
+                setRetrievalMode(PAIDRetrievalMode.Semantic);
+                break;
+            case "GraphRAG":
+                console.log("GraphRAG");
+                setRetrievalMode(PAIDRetrievalMode.GraphRAG);
+                break;
+            default:
+                console.warn("Unknown sharedState:", sharedState);
+        }
+    }, [sharedState]);
+
+
+
 
     const lastQuestionRef = useRef<string>("");
     const chatMessageStreamEnd = useRef<HTMLDivElement | null>(null);
@@ -99,6 +133,8 @@ const Chat = () => {
                 { content: answer[1].message.content, role: "assistant" }
             ]);
             const allMessages: AIChatMessage[] = [...messages, { content: question, role: "user" }];
+
+            console.log("retrievalMode Last:", retrievalMode);
             const options: ChatAppRequestOptions = {
                 context: {
                     overrides: {
@@ -115,6 +151,20 @@ const Chat = () => {
             if (shouldStream) {
                 const result = (await chatClient.getStreamedCompletion(allMessages, options)) as AsyncIterable<RAGChatCompletionDelta>;
                 const parsedResponse = await handleAsyncRequest(question, answers, result);
+                // switch (sharedState)
+                // {
+                //     case PAIDRetrievalMode.Vector:
+                //         parsedResponse = { ...parsedResponse, message: simpleResponse };
+                //         break;
+
+                //     case PAIDRetrievalMode.Semantic:
+                //         parsedResponse = { ...parsedResponse, message: rerankerResponse };
+                //         break;
+
+                //     case PAIDRetrievalMode.GraphRAG:
+                //         parsedResponse = { ...parsedResponse, message: graphResponse };
+                //         break;
+                // }
                 setAnswers([...answers, [question, parsedResponse]]);
             } else {
                 const result = (await chatClient.getCompletion(allMessages, options)) as RAGChatCompletion;
@@ -313,7 +363,6 @@ const Chat = () => {
                         onChange={onRetrieveCountChange}
                     />
 
-                    <VectorSettings updateRetrievalMode={(retrievalMode: RetrievalMode) => setRetrievalMode(retrievalMode)} />
 
                     <h3>Settings for final chat completion:</h3>
 

@@ -38,15 +38,13 @@ class SimpleRAGChat(RAGChatBase):
         """Retrieve relevant rows from the database and build a context for the chat model."""
 
         # Retrieve relevant rows from the database
-        print("Search and Embed")
         results = await self.searcher.search_and_embed(
-            chat_params.original_user_query,
+            retrieval_mode=chat_params.retrieval_mode,
+            query_text=chat_params.original_user_query,
             top=chat_params.top,
             enable_vector_search=chat_params.enable_vector_search,
             enable_text_search=chat_params.enable_text_search,
         )
-
-        print("result == ", results)
 
         if results is None:
             results = []  # Default to an empty list if no results
@@ -126,16 +124,6 @@ class SimpleRAGChat(RAGChatBase):
         results: list[Case],
         earlier_thoughts: list[ThoughtStep],
     ) -> AsyncGenerator[RetrievalResponseDelta, None]:
-        print("Answer Stream")
-        # print("*******************************************************************************************")
-        # print("chat_params", chat_params)
-        # print("*******************************************************************************************")
-        # print("contextual_messages", contextual_messages)
-        # print("*******************************************************************************************")
-        print("results", results)
-        # print("*******************************************************************************************")
-        # print("earlier_thoughts", earlier_thoughts)
-        # print("*******************************************************************************************")
         chat_completion_async_stream: AsyncStream[
             ChatCompletionChunk
         ] = await self.openai_chat_client.chat.completions.create(

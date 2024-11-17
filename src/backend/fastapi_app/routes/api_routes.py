@@ -99,7 +99,6 @@ async def chat_handler(
     chat_request: ChatRequest,
 ):
     try:
-        print("Hello Chat")
         searcher = PostgresSearcher(
             db_session=database_session,
             openai_embed_client=openai_embed.client,
@@ -143,8 +142,6 @@ async def chat_stream_handler(
     openai_chat: ChatClient,
     chat_request: ChatRequest,
 ):
-    print("Hello")
-    print("chat_request", chat_request)
     searcher = PostgresSearcher(
         db_session=database_session,
         openai_embed_client=openai_embed.client,
@@ -154,17 +151,6 @@ async def chat_stream_handler(
         embedding_column=context.embedding_column,
     )
 
-    # rag_flow: SimpleRAGChat | AdvancedRAGChat
-    # if chat_request.context.overrides.use_advanced_flow:
-    #     print("AdvancedRAGChat")
-    #     rag_flow = AdvancedRAGChat(
-    #         searcher=searcher,
-    #         openai_chat_client=openai_chat.client,
-    #         chat_model=context.openai_chat_model,
-    #         chat_deployment=context.openai_chat_deployment,
-    #     )
-    # else:
-    print("SimpleRAGChat")
     rag_flow = SimpleRAGChat(
         searcher=searcher,
         openai_chat_client=openai_chat.client,
@@ -173,18 +159,13 @@ async def chat_stream_handler(
     )
 
     chat_params = rag_flow.get_params(chat_request.messages, chat_request.context.overrides)
-    print("chat_params", chat_params)
 
     # Intentionally do this before we stream down a response, to avoid using database connections during stream
     # See https://github.com/tiangolo/fastapi/discussions/11321
     contextual_messages, results, thoughts = await rag_flow.prepare_context(chat_params)
-    print("Geldi")
-    # print("contextual_messages", contextual_messages)
-    # print("results", results)
-    # print("thoughts", thoughts)
 
     result = rag_flow.answer_stream(
         chat_params=chat_params, contextual_messages=contextual_messages, results=results, earlier_thoughts=thoughts
     )
-    print("Exited")
+
     return StreamingResponse(content=format_as_ndjson(result), media_type="application/x-ndjson")
