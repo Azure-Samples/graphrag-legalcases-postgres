@@ -31,9 +31,17 @@ For related solution accelerators and articles please see the following:
 - [Reciprocal Rank Fusion (RRF) explained in 4 mins](https://medium.com/@devalshah1619/mathematical-intuition-behind-reciprocal-rank-fusion-rrf-explained-in-2-mins-002df0cc5e2a)
 
 ## Deployment and Development
-
-### Deploy resources into your Azure subscription
 The steps below guides you to deploy the Azure services necessary for this solution accelerator into your Azure subscription.
+
+### Prerequisite Steps for Semantic Ranking ML Endpoint
+
+> NOTE: In order to run the Semantic Ranking part of this accelerator, it requires you have an Azure ML Endpoint running a ranking model such as “bge-reranker-v2-m3”.  As a way to get this up and running, you can deploy following related solution accelerator which will setup an Azure ML Endpoint for ranking scoring:
+
+- [Semantic Ranking in Azure Database for PostgreSQL Flexible Server](https://github.com/microsoft/Semantic-Ranker-Solution-PostgreSQL)
+
+> Once you deploy this accelerator, notate the `"/score"` REST endpoint URI and the key.  You will need these in the steps below when deploying.
+
+### Deployment Steps
 1. Enter the following to clone the GitHub repo containing exercise resources:
     ```bash
     git clone https://github.com/Azure-Samples/graphrag-legalcases-postgres.git
@@ -54,7 +62,13 @@ The steps below guides you to deploy the Azure services necessary for this solut
     ```
     This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure App Service.
 
-5. Run Post Provision SQL Script for GraphRAG
+5. Provide Azure ML Endpoint and Key
+
+    You will be asked for 2 values, the `"azureMLEndpointKey"` and `"azureMLScoringEndpoint"`
+
+    Use the values obtained during the Prerequisite Steps above.
+
+6. Run Post Provision SQL Script for GraphRAG
     
     First, gather the PostgreSQL Username that was generated during provision time, use the following command using azd.  Keep note of this Username:
     
