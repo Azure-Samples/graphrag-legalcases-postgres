@@ -82,7 +82,7 @@ The steps below guides you to deploy the Azure services necessary for this solut
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{Username}"
     ```
     
-    This should finalize your Postgres instance for the Apache AGE Graph extension and legal citation data that was loaded.
+    This should finalize your PostgreSQL instance for the Apache AGE Graph extension and legal citation data that was loaded.
 
 ## Contributing
 
