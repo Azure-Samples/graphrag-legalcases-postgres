@@ -1,132 +1,100 @@
-# PAID-mshacks
-PAID (Postgres AI demos) Use PAID to get paid! In this day and age, the only way to increase revenue is to understand how to turn your Postgres application into an intelligent AI application. Learn quickly with this interactive Postgres App
+# GraphRAG Solution Accelerator for Azure Database for PostgreSQL
+This solution accelerator is designed as an end-to-end example of a Legal Research Copilot application. It demonstrates the implementation of three information retrieval techniques: vector search, semantic ranking, and GraphRAG on Azure Database for PostgreSQL, and illustrates how they can be combined to deliver high quality responses to legal research questions. The app uses the U.S. Case Law dataset of 0.5 million legal cases as a source of the factual data.
 
-## Running the frontend
+## Solution Accelerator Architecture
 
-1. Build the frontend:
+<p align="center">
+<img src="docs/assets/graph_rag_arch.png" style="width:70%; height:auto; display: block; margin: 0 auto;  text-align:center">
+</p>
 
-```bash
-    cd src/frontend
-    npm install
-    npm run build
-    cd ../../
-```
+## Solution Accelerator Concepts
 
-There must be an initial build of static assets before running the backend, since the backend serves static files from the `src/static` directory.
+As the architecture diagram shows, this solution accelerator brings together **vector search, semantic ranking, and GraphRAG**. Here are some highlights, including the information retrieval pipeline:
 
-2. Run the FastAPI backend (with hot reloading). This should be run from the root of the project:
+> **Semantic Ranking:**
+> Enhances vector search accuracy by re-ranking results with a semantic ranker model, significantly improving top results' relevance (e.g., up to a 10–20% boost in NDCG@10 accuracy). The semantic ranker is available as a standalone solution accelerator, detailed in the blog: Introducing Semantic Ranker Solution Accelerator for Azure Database for PostgreSQL.
 
-Clone the [Postgres and RAG demo](https://github.com/Azure-Samples/rag-postgres-openai-python/tree/main) as the backend. We hacked together the backend for this project. We need to build a proper backend. 
+> **GraphRAG:**
+> An advanced RAG technique proposed by Microsoft Research to improve quality of RAG system responses by extracting knowledge graph from the source data and leveraging it to provide better context to the LLM. The GraphRAG technique consists of three high level steps:
+> 1. Graph extraction 
+> 2. Entity summarization 
+> 3. Graph query generation at query time 
 
-You need to install [Postgres on your local box](https://postgresapp.com/) to run this properly
+> **Information Retrieval Pipeline:**
+> We leverage the structure of the citation graph at the query time by using specialized graph query. The graph query is designed to use the prominence of the legal cases as a signal to improve the accuracy of the information retrieval pipeline. The graph query is expressed as a mixture of traditional relational query and OpenCypher graph query and executed on Postgres using the Apache AGE extension. The resulting information retrieval pipeline is shown below.
+> <p align="center"><img src="docs/assets/info_pipeline.png" style="width:70%; height:auto; display: block; margin: 0 auto; text-align:center"></p>
 
-```shell
-    python -m uvicorn fastapi_app:create_app --factory --reload
-```
+## Further Reading
+For related solution accelerators and articles please see the following:
+- [Semantic Ranker Solution Accelerator for Azure Database for PostgreSQL](https://github.com/microsoft/Semantic-Ranker-Solution-PostgreSQL)
+- [GraphRAG: Unlocking LLM discovery on narrative private data](https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/)
+- [Reciprocal Rank Fusion (RRF) explained in 4 mins](https://medium.com/@devalshah1619/mathematical-intuition-behind-reciprocal-rank-fusion-rrf-explained-in-2-mins-002df0cc5e2a)
 
-Or you can run "Backend" in the VS Code Run & Debug menu.
+## Deployment and Development
 
-3. Run the frontend (with hot reloading):
+### Deploy resources into your Azure subscription
+The steps below guides you to deploy the Azure services necessary for this solution accelerator into your Azure subscription.
+1. Enter the following to clone the GitHub repo containing exercise resources:
+    ```bash
+    git clone https://github.com/Azure-Samples/graphrag-legalcases-postgres.git
+    cd graphrag-legalcases-postgres
+    ```
+2. Login to your Azure account
+    ```bash
+    azd auth login
+    ```
+3. Create a new azd environment
+   ```bash
+    azd env new
+    ```
+   Enter a name that will be used for the resource group. This will create a new folder in the .azure folder, and set it as the active environment for any calls to azd going forward.
+4. Provision the resources
+    ```bash
+    azd up
+    ```
+    This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure App Service.
 
-```bash
-    cd src/frontend
-    npm run dev
-```
+5. Run Post Provision SQL Script for GraphRAG
+    
+    First, gather the PostgreSQL Username that was generated during provision time, use the following command using azd.  Keep note of this Username:
+    
+    ```bash
+    azd env get-value SERVICE_WEB_IDENTITY_NAME
+    ```
 
-    Or you can run "Frontend" or "Frontend & Backend" in the VS Code Run & Debug menu.
+    Then, open your favorite PostgreSQL client tool, such as pgAdmin, and run the following script.  Be sure to replace {Username} with the Username obtained in the step above:
 
-4. Open the browser at `http://localhost:5173/` and you will see the frontend.
+    ```pgsql
+    CREATE EXTENSION IF NOT EXISTS age;
+    
+    SET search_path = ag_catalog, "$user", public;
+    
+    SELECT * FROM cypher('case_graph', $$
+        MATCH ()-[r:CITES]->()
+        RETURN COUNT(r) AS cites_count
+    $$) AS (cites_count agtype);
+    
+    SELECT * FROM cypher('case_graph', $$
+        MATCH ()-[r:CITES]->()
+        RETURN COUNT(r) AS cites_count
+    $$) AS (cites_count agtype);
+    
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{Username}"
+    ```
+    
+    This should finalize your Postgres instance for the Apache AGE Graph extension and legal citation data that was loaded.
 
-# Hackathon Descriptions
+## Contributing
 
-## Using Postgres and GraphRAG to improve accuracy of GenAI application
+This project welcomes contributions and suggestions. Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit https://cla.microsoft.com.
 
-### 1. Problem
-Today many customers complain about the accuracy for their GenAI application. Often the application hallucination and return incorrect answers, especially in enterprise scenarios when a lot of the answers are hidden in documents specific to the company or their industry.
+When you submit a pull request, a CLA-bot will automatically determine whether you need
+to provide a CLA and decorate the PR appropriately (e.g., label, comment). Simply follow the
+instructions provided by the bot. You will only need to do this once across all repositories using our CLA.
 
-### 2. Use case
-Created a legal research application based on 7 million available cases in the US to help lawyers and legal professionals enhance their case preparation process.
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
 
-By leveraging Postgres and GenAI, PAID aims to provide them with powerful tools to:​
+## Trademarks
 
-- Identify Relevant Cases: Quickly find and analyze case law pertinent to their current cases.​
-
-- Highlight Key Precedents: Connect cases through pivotal rulings and opinions to strengthen legal arguments.​
-
-- Improve Productivity: Streamline workflows and make case preparation more efficient.​
-
-Overall, it’s about empowering legal professionals with advanced technology to build stronger, more informed cases.​
-
-### 3. Solution
-Using Postgres and advanced techniques we can improve the quality of the context used by the LLM to improve answers.
-
-We are going to use the following techniques and demonstrate how graphs can significantly improve content.:
-
-- Vector search: Can be inaccurate due to the limitation with embeddings​.
-- Semantic reranker: Improves on Vector results however has no reference about relationships and why 1 result might be more important that another.
-- Graph: The most superior solution. Lawyers care the most about prominence of a case there are referencing to define the strongest cases. We create a graph and to see prominence and improved results, by ranking results with more citations higher. Using a graph, we were about to detect with cases are most relevant to a question and has the most references.​
-
-### Azure Technologies used
-#### Azure Database for PostgreSQL - Flexible Server:
-
-- Stores large volumes of structured related to all cases were stored in Postgres.
-- Used Postgres Azure AI extension to embed all the case data
-- Used Postgres to perform vector search and reranker queries.
-- Used Postgres graph extension to perform graph query
-
-#### Azure OpenAI:
-
-- Utilized for OpenAI embedding model to embed all the cases data.
-- Using GPT4o to answer the user questions using the retrieved context.
-
-#### Azure Machine Learning:
-
-- Utilized to host the endpoint for the reranker model.
-
-### 4. Dataset Used
-The dataset used was all the cases in US history.
-
-We ingested all cases from the [Case Law](https://case.law/), almost 7 million cases from courts all over the US.
-
-- [Case Data](https://static.case.law/wash/198/cases/0001-01.json): Data about the case. Including Opinions from the judge, Case names, Judges etc.
-- [Case Metadata](https://static.case.law/wash/198/CasesMetadata.json): Metadata about a case. Including case names, judges, court information, citation information etc.
-- [Case Data embeddings]: We embedded all the opinions from a case and store. it as a column in the Case Data table.
-
-### 5a. Business Value of Azure OpenAI to Microsoft Customers
-**Improved Productivity:** Streamlines the research and preparation process, saving time and resources for professionals.
-
-**Better Utilization of Data:** Enables the discovery of hidden, industry-specific insights within vast document repositories, turning data into actionable knowledge.
-
-**Scalability and Flexibility:** Leverages Azure's scalable infrastructure, allowing for the efficient handling of large volumes of data with high performance and reliability. We were able to process millions of rows of data with Azure OpenAI.
-
-### 5b. Business Value of Azure OpenAI to Microsoft Customers
-**Enhanced Accuracy for RAG application:** With this hack we proved advanced techniques like Graph RAG can improve accuracy of RAG application, reducing the time and effort required for research tasks, allowing professionals to focus on higher-value tasks.​
-
-**Operational Efficiency and Cost Saving:** With this hack we proved that enterprises could use Postgres for all the GenAI database needs, they don't need to migrate and learn new tech to develop high accurate and complex GenAI apps.
-
-### 6. Demo
-Imaging you a lawyer prepping for a case involving water leaking into the apartment:
-
-**Q:** Water leaking into the apartment from the floor above. What are the prominent legal precedents in Washington on this problem?
-
-**A:** Accurate generateed LLM answer using information from the Graph Query:
-
-"The prominent legal precedents in Washington regarding water leaking into an apartment from the floor above are based on two main legal principles: the duty of care in maintaining premises and the implied warranty of habitability.
-
-### 1. **Duty of Care in Maintaining Premises**
-This principle holds landlords responsible for maintaining the premises in a safe and habitable condition, especially when defects are known or should have been known to them. The landlord must ensure that the property does not pose a danger to the tenants.
-
-#### **Prominent Cases:**
-- **Martindale Clothing Co. v. Spokane & Eastern Trust Co.** (1914): The court held the landlord liable for damages caused by water leaking from a pipe in the upper story, which the landlord failed to maintain properly. The landlord's negligence in maintaining the water pipe led to the flooding of the tenant's store, causing significant damage.
-- **Thomas v. Housing Authority of the City of Bremerton** (1967): The court found the landlord liable for injuries caused by excessively hot water from a water heater, which was a known defect. The landlord's failure to maintain the water heater in a safe condition constituted negligence.
-- **Jorgensen v. Massart** (1963): The court held that the landlord was responsible for damages caused by water leaking into the tenant's apartment due to the landlord's failure to maintain the building's roof properly.
-
-### 2. **Implied Warranty of Habitability**
-This principle implies that landlords must provide and maintain rental properties in a condition fit for human habitation. This includes ensuring that essential services such as plumbing are functional and do not pose health hazards.
-
-#### **Prominent Cases:**
-- **Foisy v. Wyman** (1973): The court recognized the implied warranty of habitability, holding that landlords must maintain rental properties in a habitable condition. The tenant was allowed to present evidence of the landlord's failure to repair significant defects, including water leaks, as a defense in an unlawful detainer action.
-- **Stuart v. Coldwell Banker Commercial Group, Inc.** (1987): The court extended the implied warranty of habitability to condominium units, requiring that common areas and limited common areas be maintained in a condition fit for their intended use. The landlord was held liable for failing to address water leaks and other defects.
-
-### Summary
-In Washington, landlords are required to maintain rental properties in a safe and habitable condition. Failure to address known defects, such as water leaks from the floor above, can result in liability for damages under the principles of duty of care and implied warranty of habitability. Prominent cases such as Martindale Clothing Co. v. Spokane & Eastern Trust Co., Thomas v. Housing Authority of the City of Bremerton, Jorgensen v. Massart, Foisy v. Wyman, and Stuart v. Coldwell Banker Commercial Group, Inc. illustrate these principles and the legal obligations of landlords."
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft’s Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
