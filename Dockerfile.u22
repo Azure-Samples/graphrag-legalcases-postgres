@@ -1,0 +1,106 @@
+ARG BASE_IMAGE
+ARG BASE_VERSION
+
+FROM ${BASE_IMAGE}:${BASE_VERSION} AS builder
+SHELL [ "/bin/bash", "-euo", "pipefail", "-c" ]
+
+# Install build dependencies
+ARG BUILD_DEPS
+ARG DEVEL_DEPS
+RUN apt-get update
+RUN apt-get install -y ${BUILD_DEPS} ${DEVEL_DEPS}
+RUN apt-get autoclean -y
+RUN apt-get autoremove -y
+
+# Create a non-root user
+ARG POSTGRES_USER_ID
+ARG POSTGRES_USER_NAME
+ARG POSTGRES_USER_SHELL
+RUN useradd --create-home --user-group --uid ${POSTGRES_USER_ID} --shell ${POSTGRES_USER_SHELL} ${POSTGRES_USER_NAME}
+
+# Switch to the non-root user
+USER ${POSTGRES_USER_NAME}
+WORKDIR /home/${POSTGRES_USER_NAME}
+
+# Install pgenv
+ARG PGENV_VERSION
+RUN git clone --branch v${PGENV_VERSION} https://github.com/theory/pgenv.git .pgenv
+ARG PATH=/home/${POSTGRES_USER_NAME}/.pgenv/bin:$PATH
+RUN pgenv config init
+RUN sed -E 's/(PGENV_CONFIGURE_OPTIONS)=\S+/\1=([0]="--enable-debug" [1]="--with-llvm" [2]="--with-ssl=openssl")/' -i ~/.pgenv/config/default.conf
+ARG PG_VERSION
+ARG LLVM_CONFIG
+ARG CLANG
+RUN pgenv build ${PG_VERSION}
+
+# Ensure .pgenv exists
+RUN ls -al /home/${POSTGRES_USER_NAME}/.pgenv
+
+# Check PostgreSQL installation
+RUN /home/${POSTGRES_USER_NAME}/.pgenv/pgsql-${PG_VERSION}/bin/pg_ctl --version || (echo "PostgreSQL installation failed" && exit 1)
+
+# Install Apache AGE
+COPY --chown=${POSTGRES_USER_NAME}:${POSTGRES_USER_NAME} vendor/age /tmp/age-source
+WORKDIR /tmp/age-source
+RUN make PG_CONFIG=/home/${POSTGRES_USER_NAME}/.pgenv/pgsql-${PG_VERSION}/bin/pg_config install
+
+# Install pgvector
+WORKDIR /home/${POSTGRES_USER_NAME}
+RUN git clone https://github.com/pgvector/pgvector.git
+WORKDIR /home/${POSTGRES_USER_NAME}/pgvector
+RUN make PG_CONFIG=/home/${POSTGRES_USER_NAME}/.pgenv/pgsql-${PG_VERSION}/bin/pg_config
+RUN make PG_CONFIG=/home/${POSTGRES_USER_NAME}/.pgenv/pgsql-${PG_VERSION}/bin/pg_config install
+
+WORKDIR /home/${POSTGRES_USER_NAME}
+
+FROM ${BASE_IMAGE}:${BASE_VERSION} AS final
+SHELL [ "/bin/bash", "-euo", "pipefail", "-c" ]
+
+# Install runtime dependencies
+ARG RUNTIME_DEPS
+RUN apt-get update
+RUN apt-get install -y ${RUNTIME_DEPS}
+RUN apt-get autoclean -y
+RUN apt-get autoremove -y
+
+# Set the locale
+RUN sed -E 's/# (en_US\.UTF-8.+)/\1/' -i /etc/locale.gen
+RUN locale-gen
+
+# Create a non-root user
+ARG POSTGRES_USER_ID
+ARG POSTGRES_USER_NAME
+ARG POSTGRES_USER_SHELL
+RUN useradd --create-home --user-group --uid ${POSTGRES_USER_ID} --shell ${POSTGRES_USER_SHELL} ${POSTGRES_USER_NAME}
+
+# Copy the initialization script into the container
+COPY init-postgres.sh /usr/local/bin/init-postgres.sh
+RUN chmod +x /usr/local/bin/init-postgres.sh
+
+
+# Switch to the non-root user
+USER ${POSTGRES_USER_NAME}
+WORKDIR /home/${POSTGRES_USER_NAME}/
+
+# Copy pgenv from the builder
+COPY --from=builder --chown=${POSTGRES_USER_NAME}:${POSTGRES_USER_NAME} /home/${POSTGRES_USER_NAME}/.pgenv ./.pgenv
+ARG PG_VERSION
+ENV PATH=/home/${POSTGRES_USER_NAME}/.pgenv/bin:/home/${POSTGRES_USER_NAME}/.pgenv/pgsql/bin:$PATH
+
+#RUN pgenv switch ${PG_VERSION}
+
+RUN pgenv use ${PG_VERSION}
+
+# Set environment variable for PostgreSQL password
+ARG POSTGRES_PASSWORD
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+# Update PostgreSQL configuration
+RUN echo "listen_addresses = '*'" >> /home/${POSTGRES_USER_NAME}/.pgenv/pgsql/data/postgresql.conf && \
+    echo "host    all             all             0.0.0.0/0               md5" >> /home/${POSTGRES_USER_NAME}/.pgenv/pgsql/data/pg_hba.conf
+
+
+# Set CMD to run the init scriptp
+CMD ["/usr/local/bin/init-postgres.sh"]
+# CMD ["tail", "-f", "/home/postgres/.pgenv/pgsql/data/server.log"]
+# CMD ["tail", "-f", "/dev/null"]

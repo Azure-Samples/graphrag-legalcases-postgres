@@ -164,11 +164,10 @@ export const GraphPanel = ({ thoughts }: Props) => {
                             'width': 'data(refs)',
                             'height': 'data(refs)',
                             'background-color': 'data(color)',
-                            'outline-color': '#0fd406',
-                            'outline-opacity': 0.7,
-                            'outline-width': 'data(selection)',
-                            'outline-style': 'solid',
-                            'outline-offset': 6,
+                            'border-color': '#0fd406',           // Replaces outline-color
+                            'border-opacity': 0.7,               // Replaces outline-opacity
+                            'border-width': 'data(selection)',   // Replaces outline-width
+                            'border-style': 'solid',             // Replaces outline-style
                         }
                     },
                     {

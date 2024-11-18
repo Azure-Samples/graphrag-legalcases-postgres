@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "data-ingestion"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+graspologic = "^3.4.1"
+jupyter = "^1.1.1"
+pandas = "^2.2.3"
+openai = "0.28.0"
+future = "^1.0.0"
+ipykernel = "^6.29.5"
+psycopg2 = "^2.9.10"
+python-dotenv = "^1.0.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+ipywidgets = "*"
+isort = "*"
+pylint = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,99 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "name": {
+        "value": "${AZURE_ENV_NAME}"
+      },
+      "location": {
+        "value": "${AZURE_LOCATION}"
+      },
+      "principalId": {
+        "value": "${AZURE_PRINCIPAL_ID}"
+      },
+      "webAppExists": {
+        "value": "${SERVICE_WEB_RESOURCE_EXISTS=false}"
+      },
+      "runningOnGh": {
+        "value": "${GITHUB_ACTIONS}"
+      },
+      "openAILocation": {
+        "value": "japaneast"
+      },
+      "deployAzureOpenAI": {
+        "value": "${DEPLOY_AZURE_OPENAI=true}"
+      },
+      "azureOpenAIKey": {
+        "value": "${AZURE_OPENAI_KEY}"
+      },
+      "azureOpenAIEndpoint": {
+        "value": "${AZURE_OPENAI_ENDPOINT}"
+      },
+      "openAIChatHost": {
+        "value": "${OPENAI_CHAT_HOST=azure}"
+      },
+      "chatModelName": {
+        "value": "${AZURE_OPENAI_CHAT_MODEL=gpt-35-turbo-16k}"
+      },
+      "chatDeploymentName": {
+        "value": "${AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-35-turbo-16k}"
+      },
+      "chatDeploymentVersion":{
+        "value": "${AZURE_OPENAI_CHAT_DEPLOYMENT_VERSION=0613}"
+      },
+      "chatDeploymentSku": {
+        "value": "${AZURE_OPENAI_CHAT_DEPLOYMENT_SKU=Standard}"
+      },
+      "chatDeploymentCapacity":{
+        "value": "${AZURE_OPENAI_CHAT_DEPLOYMENT_CAPACITY=30}"
+      },
+      "deployEvalModel": {
+        "value": "${DEPLOY_EVAL_MODEL=false}"
+      },
+      "evalModelName": {
+        "value": "${AZURE_OPENAI_EVAL_MODEL=gpt-4}"
+      },
+      "evalDeploymentName": {
+        "value": "${AZURE_OPENAI_EVAL_DEPLOYMENT=gpt-4}"
+      },
+      "evalDeploymentVersion":{
+        "value": "${AZURE_OPENAI_EVAL_DEPLOYMENT_VERSION=turbo-2024-04-09}"
+      },
+      "evalDeploymentSku": {
+        "value": "${AZURE_OPENAI_EVAL_DEPLOYMENT_SKU=GlobalStandard}"
+      },
+      "evalDeploymentCapacity":{
+        "value": "${AZURE_OPENAI_EVAL_DEPLOYMENT_CAPACITY=80}"
+      },
+      "openAIEmbedHost": {
+        "value": "${OPENAI_EMBED_HOST=azure}"
+      },
+      "embedModelName":{
+        "value": "${AZURE_OPENAI_EMBED_MODEL=text-embedding-3-small}"
+      },
+      "embedDeploymentName": {
+        "value": "${AZURE_OPENAI_EMBED_DEPLOYMENT=text-embedding-3-small}"
+      },
+      "embedDeploymentVersion":{
+        "value": "${AZURE_OPENAI_EMBED_DEPLOYMENT_VERSION=1}"
+      },
+      "embedDeploymentSku": {
+        "value": "${AZURE_OPENAI_EMBED_DEPLOYMENT_SKU=Standard}"
+      },
+      "embedDeploymentCapacity":{
+        "value": "${AZURE_OPENAI_EMBED_DEPLOYMENT_CAPACITY=120}"
+      },
+      "embedDimensions": {
+        "value": "${AZURE_OPENAI_EMBED_DIMENSIONS=1536}"
+      },
+      "openAIComKey": {
+        "value": "${OPENAICOM_KEY}"
+      },
+      "azureMLScoringEndpoint": {
+        "value": "${AZURE_ML_SCORING_ENDPOINT}"
+      },
+      "azureMLEndpointKey": {
+        "value": "${AZURE_ML_ENDPOINT_KEY}"
+      }
+    }
+}

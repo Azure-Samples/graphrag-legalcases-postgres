@@ -1,1 +1,0 @@
-{"version":3,"file":"NoPage-42b78e1a.js","sources":["../../../frontend/src/pages/NoPage.tsx"],"sourcesContent":["export function Component(): JSX.Element {\n    return <h1>404</h1>;\n}\n\nComponent.displayName = \"NoPage\";\n"],"names":["Component","jsx"],"mappings":"0CAAO,SAASA,GAAyB,CAC9B,OAAAC,EAAA,IAAC,MAAG,SAAG,KAAA,CAAA,CAClB,CAEAD,EAAU,YAAc"}

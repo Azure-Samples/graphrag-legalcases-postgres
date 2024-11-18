@@ -1,0 +1,50 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+lint.select = ["E", "F", "I", "UP"]
+lint.ignore = ["D203"]
+lint.isort.known-first-party = ["fastapi_app"]
+
+[tool.mypy]
+check_untyped_defs = true
+python_version = 3.12
+exclude = [".venv/*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+pythonpath = ['src/backend']
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[[tool.mypy.overrides]]
+module = [
+    "pgvector.*",
+    "evaltools.*"
+]
+ignore_missing_imports = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.poetry]
+name = "legal-research-copilot-postgresql"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+python-dotenv = "^1.0.1"
+psycopg = {extras = ["binary"], version = "^3.2.3"}
+asyncpg = "^0.30.0"
+azure-storage-blob = "^12.23.1"
+requests = "^2.32.3"
+azure-identity = "^1.19.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

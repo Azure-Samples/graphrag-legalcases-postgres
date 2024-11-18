@@ -14,7 +14,7 @@ export const enum PAIDRetrievalMode {
 
 export type ChatAppRequestOverrides = {
     use_advanced_flow?: boolean;
-    retrieval_mode?: RetrievalMode;
+    retrieval_mode?: PAIDRetrievalMode;
     top?: number;
     temperature?: number;
     prompt_template?: string;
