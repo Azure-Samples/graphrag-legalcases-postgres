@@ -62,7 +62,7 @@ The steps below guides you to deploy the Azure services necessary for this solut
     azd env get-value SERVICE_WEB_IDENTITY_NAME
     ```
 
-    Then, open your favorite PostgreSQL client tool, such as pgAdmin, and run the following script.  Be sure to replace {Username} with the Username obtained in the step above:
+    Then, open your favorite PostgreSQL client tool, such as pgAdmin, and run the following script.  Be sure to replace `{Username}` with the Username obtained in the step above:
 
     ```pgsql
     CREATE EXTENSION IF NOT EXISTS age;
