@@ -5,14 +5,13 @@ import os
 
 from dotenv import load_dotenv
 from sqlalchemy import text
-
 from fastapi_app.postgres_engine import create_postgres_engine_from_args, create_postgres_engine_from_env
 from fastapi_app.postgres_models import Base
 
 logger = logging.getLogger("legalcaseapp")
 
-
 async def create_db_schema(engine):
+
     async with engine.begin() as conn:
         logger.info("Enabling azure_ai extension...")
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS azure_ai"))
@@ -94,5 +93,7 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
     logger.setLevel(logging.INFO)
+
     load_dotenv(override=True)
+
     asyncio.run(main())
