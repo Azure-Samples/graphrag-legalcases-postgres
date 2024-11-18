@@ -54,6 +54,36 @@ The steps below guides you to deploy the Azure services necessary for this solut
     ```
     This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure App Service.
 
+5. Run Post Provision SQL Script for GraphRAG
+    
+    First, gather the PostgreSQL Username that was generated during provision time, use the following command using azd.  Keep note of this Username:
+    
+    ```bash
+    azd env get-value SERVICE_WEB_IDENTITY_NAME
+    ```
+
+    Then, open your favorite PostgreSQL client tool, such as pgAdmin, and run the following script.  Be sure to replace `{Username}` with the Username obtained in the step above:
+
+    ```pgsql
+    CREATE EXTENSION IF NOT EXISTS age;
+    
+    SET search_path = ag_catalog, "$user", public;
+    
+    SELECT * FROM cypher('case_graph', $$
+        MATCH ()-[r:CITES]->()
+        RETURN COUNT(r) AS cites_count
+    $$) AS (cites_count agtype);
+    
+    SELECT * FROM cypher('case_graph', $$
+        MATCH ()-[r:CITES]->()
+        RETURN COUNT(r) AS cites_count
+    $$) AS (cites_count agtype);
+    
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{Username}"
+    ```
+    
+    This should finalize your PostgreSQL instance for the Apache AGE Graph extension and legal citation data that was loaded.
+
 ## Contributing
 
 This project welcomes contributions and suggestions. Most contributions require you to agree to a Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us the rights to use your contribution. For details, visit https://cla.microsoft.com.

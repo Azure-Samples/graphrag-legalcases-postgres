@@ -485,5 +485,4 @@ output POSTGRES_USERNAME string = postgresEntraAdministratorName
 output POSTGRES_DATABASE string = postgresDatabaseName
 output AZURE_ML_SCORING_ENDPOINT string = azureMLScoringEndpoint
 output AZURE_ML_ENDPOINT_KEY string = azureMLEndpointKey
-
 output BACKEND_URI string = web.outputs.uri
