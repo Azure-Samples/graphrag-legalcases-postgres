@@ -1,9 +1,7 @@
 import argparse
 import asyncio
 import logging
-import os
 
-from dotenv import load_dotenv
 from sqlalchemy import text
 
 from fastapi_app.postgres_engine import create_postgres_engine_from_args, create_postgres_engine_from_env
@@ -12,7 +10,7 @@ from fastapi_app.postgres_models import Base
 logger = logging.getLogger("legalcaseapp")
 
 
-async def create_db_schema(engine):
+async def create_db_schema(engine, ml_endpoint, ml_key):
     async with engine.begin() as conn:
         logger.info("Enabling azure_ai extension...")
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS azure_ai"))
@@ -20,20 +18,10 @@ async def create_db_schema(engine):
         logger.info("Enabling the pgvector extension for Postgres...")
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
-        # Load environment variables for Azure ML endpoint settings
-        scoring_endpoint = os.getenv("AZURE_ML_SCORING_ENDPOINT")
-        endpoint_key = os.getenv("AZURE_ML_ENDPOINT_KEY")
-
-        if not scoring_endpoint or not endpoint_key:
-            logger.error(
-                "Azure ML endpoint settings are missing. Please set AZURE_ML_SCORING_ENDPOINT and AZURE_ML_ENDPOINT_KEY in the environment."
-            )
-            return
-
         # Set Azure ML endpoint and key
         logger.info("Setting Azure ML endpoint and API key...")
-        await conn.execute(text(f"SELECT azure_ai.set_setting('azure_ml.scoring_endpoint', '{scoring_endpoint}');"))
-        await conn.execute(text(f"SELECT azure_ai.set_setting('azure_ml.endpoint_key', '{endpoint_key}');"))
+        await conn.execute(text(f"SELECT azure_ai.set_setting('azure_ml.scoring_endpoint', '{ml_endpoint}');"))
+        await conn.execute(text(f"SELECT azure_ai.set_setting('azure_ml.endpoint_key', '{ml_key}');"))
 
         # Create the semantic_relevance function
         logger.info("Creating semantic_relevance function...")
@@ -76,21 +64,19 @@ async def main():
     parser.add_argument("--password", type=str, help="Postgres password")
     parser.add_argument("--database", type=str, help="Postgres database")
     parser.add_argument("--sslmode", type=str, help="Postgres sslmode")
+    parser.add_argument("--mlendpoint", type=str, help="AZURE ML SCORING ENDPOINT")
+    parser.add_argument("--mlkey", type=str, help="AZURE ML ENDPOINT KEY")
 
     # if no args are specified, use environment variables
     args = parser.parse_args()
     if args.host is None:
         engine = await create_postgres_engine_from_env()
-        # database_name = os.getenv("DATABASE_NAME")
-        # host = os.getenv("DATABASE_HOST")
-        # sslmode = os.getenv("DATABASE_SSLMODE", "require")
     else:
         engine = await create_postgres_engine_from_args(args)
-        # database_name = args.database
-        # host = args.host
-        # sslmode = args.sslmode
+        ml_endpoint = args.mlendpoint
+        ml_key = args.mlkey
 
-    await create_db_schema(engine)
+    await create_db_schema(engine, ml_endpoint, ml_key)
 
     await engine.dispose()
 
@@ -100,5 +86,4 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
     logger.setLevel(logging.INFO)
-    load_dotenv(override=True)
     asyncio.run(main())

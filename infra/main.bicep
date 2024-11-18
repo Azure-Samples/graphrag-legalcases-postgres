@@ -71,7 +71,6 @@ param openAIEmbedHost string = 'azure'
 @description('Azure ML Scoring Endpoint')
 param azureMLScoringEndpoint string
 
-@secure()
 @description('Azure ML Endpoint Key')
 param azureMLEndpointKey string
 
@@ -484,5 +483,7 @@ output AZURE_OPENAI_EVAL_MODEL string = deployAzureOpenAI ? evalModelName : ''
 output POSTGRES_HOST string = postgresServer.outputs.POSTGRES_DOMAIN_NAME
 output POSTGRES_USERNAME string = postgresEntraAdministratorName
 output POSTGRES_DATABASE string = postgresDatabaseName
+output AZURE_ML_SCORING_ENDPOINT string = azureMLScoringEndpoint
+output AZURE_ML_ENDPOINT_KEY string = azureMLEndpointKey
 
 output BACKEND_URI string = web.outputs.uri
