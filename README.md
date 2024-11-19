@@ -1,5 +1,5 @@
 # GraphRAG Solution Accelerator for Azure Database for PostgreSQL
-This solution accelerator is designed as an end-to-end example of a Legal Research Copilot application. It demonstrates the implementation of three information retrieval techniques: vector search, semantic ranking, and GraphRAG on Azure Database for PostgreSQL, and illustrates how they can be combined to deliver high quality responses to legal research questions. The app uses the U.S. Case Law dataset of 0.5 million legal cases as a source of the factual data. For more details on these concepts, [please see the accompanying blog to this solution accelerator here](aka.ms/pg_graphrag).
+This solution accelerator is designed as an end-to-end example of a Legal Research Copilot application. It demonstrates the implementation of three information retrieval techniques: vector search, semantic ranking, and GraphRAG on Azure Database for PostgreSQL, and illustrates how they can be combined to deliver high quality responses to legal research questions. The app uses the U.S. Case Law dataset of 0.5 million legal cases as a source of the factual data. For more details on these concepts, [please see the accompanying blog to this solution accelerator here](https://aka.ms/pg_graphrag).
 
 ## Solution Accelerator Architecture
 
