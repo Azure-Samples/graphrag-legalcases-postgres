@@ -94,13 +94,15 @@ async def seed_data_from_csv(engine: AsyncEngine, app_identity_name):
             await session.rollback()
             return
 
-        await create_plpgsql_functions(session)
+        await create_plpgsql_functions(session, app_identity_name)
 
         # # Insert cases as nodes in the graph
         await ingest_cases_to_graph_from_postgresql(session, app_identity_name)
 
         # # Create edges based on citations
         await create_edges_from_citations(session)
+
+        await verify_age_query(session, app_identity_name)
 
 
 async def insert_batch(session: AsyncSession, batch):
@@ -232,7 +234,34 @@ async def create_edges_from_citations(session):
     logger.info("Edges created successfully in the `case_graph` based on citation relationships.")
 
 
-async def create_plpgsql_functions(session):
+async def verify_age_query(session, app_identity_name):
+    await session.execute(text("CREATE EXTENSION IF NOT EXISTS age;"))
+    await session.execute(text('SET search_path = ag_catalog, "$user", public;'))
+    cypher_query_count = """
+        SELECT * FROM cypher('case_graph', $$
+            MATCH ()-[r:CITES]->()
+            RETURN COUNT(r) AS cites_count
+        $$) AS (cites_count agtype);
+    """
+    await session.execute(text(cypher_query_count))
+
+    cypher_query_match = """
+    SELECT * FROM cypher('case_graph', $$ 
+        MATCH (c:Case) 
+        RETURN c.id, c.summary 
+    $$) AS (id agtype, summary agtype);
+    """
+
+    await session.execute(text(cypher_query_match))
+
+    await session.commit()
+    await session.execute(text(f'GRANT ALL ON SCHEMA case_graph TO "{app_identity_name}";'))
+    await session.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{app_identity_name}";'))
+    await session.commit()
+    logger.info("AGE queries are verified.")
+
+
+async def create_plpgsql_functions(session, app_identity_name):
     # Define the get_vector_pagerank_rrf_cases function
     function_graphrag = text("""
         CREATE OR REPLACE FUNCTION get_vector_semantic_graphrag_cases(
@@ -463,6 +492,43 @@ async def create_plpgsql_functions(session):
     await session.execute(function_semantic)
     await session.commit()
     logger.info("Function get_vector_semantic_cases defined successfully.")
+
+    function_age = text("""
+        CREATE OR REPLACE FUNCTION initialize_age_extension()
+        RETURNS void AS $_$
+        BEGIN
+        
+            CREATE EXTENSION IF NOT EXISTS age;
+            
+            SET search_path = ag_catalog, "$user", public;
+
+            BEGIN
+                SELECT * FROM cypher('case_graph', $$
+                    MATCH ()-[r:CITES]->()
+                    RETURN COUNT(r) AS cites_count
+                $$) AS (cites_count agtype);
+            EXCEPTION WHEN OTHERS THEN
+                -- Log or handle the error as needed (optional)
+                RAISE NOTICE 'First cypher statement failed: %', SQLERRM;
+            END;
+        
+            -- Execute the second cypher statement with error handling
+            BEGIN
+                SELECT * FROM cypher('case_graph', $$
+                    MATCH ()-[r:CITES]->()
+                    RETURN COUNT(r) AS cites_count
+                $$) AS (cites_count agtype);
+            EXCEPTION WHEN OTHERS THEN
+                -- Log or handle the error as needed (optional)
+                RAISE NOTICE 'Second cypher statement failed: %', SQLERRM;
+            END;
+                        
+        END;
+        $_$ LANGUAGE plpgsql;
+    """)
+    await session.execute(function_age)
+    await session.commit()
+    logger.info("Function initialize_age_extension defined successfully.")
 
 
 def sanitize_case_text(text):

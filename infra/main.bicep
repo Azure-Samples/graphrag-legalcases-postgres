@@ -356,6 +356,7 @@ module web 'web.bicep' = {
     exists: webAppExists
     environmentVariables: webAppEnv
     secrets: secrets
+    postgresEntraAdministratorName: postgresEntraAdministratorName
   }
 }
 

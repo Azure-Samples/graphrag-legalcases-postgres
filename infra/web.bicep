@@ -11,6 +11,9 @@ param environmentVariables array = []
 @secure()
 param secrets object
 
+@description('The PostgreSQL Entra Administrator Name')
+param postgresEntraAdministratorName string
+
 resource webIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: identityName
   location: location
@@ -41,6 +44,7 @@ module app 'core/host/container-app-upsert.bicep' = {
     )
     secrets: secrets
     targetPort: 8000
+    postgresEntraAdministratorName: postgresEntraAdministratorName
   }
 }
 
