@@ -60,13 +60,6 @@ def main():
     with open(filepath) as file:
         password = file.read().strip()
 
-    print("host: ", host)
-    print("username: ", username)
-    print("password: ", password)
-    print("database: ", database)
-    print("sslmode: ", sslmode)
-    print("app_identity_name: ", app_identity_name)
-
     # Ensure environment variables are set
     if not all([host, username, password, database, app_identity_name]):
         raise ValueError("Missing required environment variables for database connection.")
