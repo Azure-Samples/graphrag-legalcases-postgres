@@ -55,5 +55,6 @@ def get_password_from_azure_credential():
 if __name__ == "__main__":
     try:
         password = get_password_from_azure_credential()
+        print(password)
     except Exception as e:
         logger.error("Failed to retrieve password: %s", e)
