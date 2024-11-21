@@ -79,6 +79,10 @@ param serviceType string = ''
 @description('The target port for the container')
 param targetPort int = 80
 
+@description('The PostgreSQL Entra Administrator Name')
+param postgresEntraAdministratorName string
+
+
 resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (!empty(identityName)) {
   name: identityName
 }
@@ -154,7 +158,12 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
         {
           image: !empty(imageName) ? imageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           name: containerName
-          env: env
+          env: concat(env, [
+            {
+              name: 'POSTGRES_ADMIN'
+              value: postgresEntraAdministratorName
+            }
+          ])
           resources: {
             cpu: json(containerCpuCoreCount)
             memory: containerMemory

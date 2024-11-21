@@ -1,4 +1,6 @@
 import logging
+import subprocess
+from pathlib import Path
 
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 from pgvector.utils import to_db
@@ -53,6 +55,33 @@ class PostgresSearcher:
         # Build filters if provided (assuming self.build_filter_clause exists and returns correct clauses)
         filter_clause_where, filter_clause_and = self.build_filter_clause(filters)
         table_name = Case.__tablename__
+
+        token_file = Path(__file__).parent / "postgres_token.txt"
+
+        if token_file.exists():
+            try:
+                script_path = Path(__file__).parent / "setup_postgres_age.py"
+
+                if not script_path.exists():
+                    logger.error(f"Setup script not found at {script_path}")
+                    raise FileNotFoundError(f"Script {script_path} does not exist.")
+
+                logger.info("Running setup_postgres_age.py...")
+                subprocess.run(["python", str(script_path)], check=True)
+                logger.info("setup_postgres_age.py completed successfully.")
+
+                if token_file.exists():
+                    try:
+                        token_file.unlink()
+                        logger.info(f"Deleted token file: {token_file}")
+                    except Exception as del_err:
+                        logger.error(f"Failed to delete token file: {del_err}")
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Error occurred while running setup_postgres_age.py: {e}")
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
+                raise
 
         await self.db_session.execute(text('SET search_path = ag_catalog, "$user", public;'))
 
