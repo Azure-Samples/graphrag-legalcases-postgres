@@ -58,7 +58,7 @@ class PostgresSearcher:
 
         token_file = Path(__file__).parent / "postgres_token.txt"
 
-        if token_file.exists():
+        if token_file.exists() and retrieval_mode == RetrievalMode.GRAPHRAG:
             try:
                 script_path = Path(__file__).parent / "setup_postgres_age.py"
 
@@ -70,18 +70,10 @@ class PostgresSearcher:
                 subprocess.run(["python", str(script_path)], check=True)
                 logger.info("setup_postgres_age.py completed successfully.")
 
-                if token_file.exists():
-                    try:
-                        token_file.unlink()
-                        logger.info(f"Deleted token file: {token_file}")
-                    except Exception as del_err:
-                        logger.error(f"Failed to delete token file: {del_err}")
             except subprocess.CalledProcessError as e:
                 logger.error(f"Error occurred while running setup_postgres_age.py: {e}")
-                raise
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
-                raise
 
         await self.db_session.execute(text('SET search_path = ag_catalog, "$user", public;'))
 
