@@ -56,20 +56,32 @@ The steps below guides you to deploy the Azure services necessary for this solut
     git clone https://github.com/Azure-Samples/graphrag-legalcases-postgres.git
     cd graphrag-legalcases-postgres
     ```
-2. Login to your Azure account
+2. Use sample .env to create your own .env
+    ```bash    
+    cp .env.sample .env    
+    ```
+3. Edit your new .env file to add your Azure ML Semantic Ranker endpoints
+    - Use the values obtained during the Prerequisite Steps above.
+    - Replace the values between the {} with your values for each.
+    ```bash
+    AZURE_ML_SCORING_ENDPOINT={YOUR-AZURE-ML-ENDPOINT}
+    AZURE_ML_ENDPOINT_KEY={YOUR-AZURE-ML-ENDPOINT-KEY}
+    ```
+4. Login to your Azure account
     ```bash
     azd auth login
     ```
-3. Create a new azd environment
+5. Create a new azd environment
    ```bash
     azd env new
     ```
-   Enter a name that will be used for the resource group. This will create a new folder in the .azure folder, and set it as the active environment for any calls to azd going forward.
-4. Provision the resources
+   - Enter a name that will be used for the resource group.
+   - This will create a new folder in the .azure folder, and set it as the active environment for any calls to azd going forward.
+6. Provision the resources
     ```bash
     azd up
     ```
-    This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure App Service.
+    - This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure Container App Service.
 
 ## Contributing
 
