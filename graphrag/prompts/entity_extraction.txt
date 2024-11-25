@@ -1,121 +1,113 @@
 
 -Goal-
-Given a text document that is potentially relevant to this activity and a list of entity types, identify all entities of those types from the text and all relationships among the identified entities.
- 
+Given a text document that is potentially relevant to this activity, first identify all entities needed from the text in order to capture the information and ideas in the text.
+Next, report all relationships among the identified entities.
+
 -Steps-
 1. Identify all entities. For each identified entity, extract the following information:
 - entity_name: Name of the entity, capitalized
-- entity_type: One of the following types: [{entity_types}]
+- entity_type: Suggest several labels or categories for the entity. The categories should not be specific, but should be as general as possible.
 - entity_description: Comprehensive description of the entity's attributes and activities
 Format each entity as ("entity"{tuple_delimiter}<entity_name>{tuple_delimiter}<entity_type>{tuple_delimiter}<entity_description>)
- 
+
 2. From the entities identified in step 1, identify all pairs of (source_entity, target_entity) that are *clearly related* to each other.
 For each pair of related entities, extract the following information:
 - source_entity: name of the source entity, as identified in step 1
 - target_entity: name of the target entity, as identified in step 1
 - relationship_description: explanation as to why you think the source entity and the target entity are related to each other
 - relationship_strength: a numeric score indicating strength of the relationship between the source entity and target entity
- Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
- 
-3. Return output in English as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
- 
-4. When finished, output {completion_delimiter}
- 
-######################
+Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_strength>)
+
+3. Return output in The primary language of the provided text is "English". as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
+
+4. If you have to translate into The primary language of the provided text is "English"., just translate the descriptions, nothing else!
+
+5. When finished, output {completion_delimiter}.
+
 -Examples-
 ######################
+
 Example 1:
-Entity_types: ORGANIZATION,PERSON
-Text:
-The Verdantis's Central Institution is scheduled to meet on Monday and Thursday, with the institution planning to release its latest policy decision on Thursday at 1:30 p.m. PDT, followed by a press conference where Central Institution Chair Martin Smith will take questions. Investors expect the Market Strategy Committee to hold its benchmark interest rate steady in a range of 3.5%-3.75%.
-######################
-Output:
-("entity"{tuple_delimiter}CENTRAL INSTITUTION{tuple_delimiter}ORGANIZATION{tuple_delimiter}The Central Institution is the Federal Reserve of Verdantis, which is setting interest rates on Monday and Thursday)
-{record_delimiter}
-("entity"{tuple_delimiter}MARTIN SMITH{tuple_delimiter}PERSON{tuple_delimiter}Martin Smith is the chair of the Central Institution)
-{record_delimiter}
-("entity"{tuple_delimiter}MARKET STRATEGY COMMITTEE{tuple_delimiter}ORGANIZATION{tuple_delimiter}The Central Institution committee makes key decisions about interest rates and the growth of Verdantis's money supply)
-{record_delimiter}
-("relationship"{tuple_delimiter}MARTIN SMITH{tuple_delimiter}CENTRAL INSTITUTION{tuple_delimiter}Martin Smith is the Chair of the Central Institution and will answer questions at a press conference{tuple_delimiter}9)
-{completion_delimiter}
 
-######################
+text:
+Blake, J.
+Plaintiffs brought this action against the city of Seattle to recover for damage to property owned by them at the northeast corner of Fairview avenue and Shelby street. The damage was caused by the sliding of earth from Shelby street onto the property.
+Eastlake avenue is parallel with, and a block east of, Fairview. Shelby street has never been improved. The slope of Shelby street descending to Fairview is 27% for the first half block and 20% for the rest of the way. When Eastlake avenue was improved, the city made a fill extending into Shelby street for about twenty feet. A drain was laid through this fill to carry off surface water that accumulated in a depression in the pavement on Eastlake.
+In 1939, this fill was augmented and extended for an additional twenty feet by the encroachment of earth dumped by certain persons on the lot at the southwest corner of Eastlake and Shelby. In the early part of 1940, the entire
+------------------------
+output:
+("entity"{tuple_delimiter}PLAINTIFFS{tuple_delimiter}GROUP{tuple_delimiter}The individuals or parties who brought the action against the city of Seattle to recover for property damage)
+{record_delimiter}
+("entity"{tuple_delimiter}CITY OF SEATTLE{tuple_delimiter}ORGANIZATION{tuple_delimiter}The municipal government being sued by the plaintiffs for property damage)
+{record_delimiter}
+("entity"{tuple_delimiter}FAIRVIEW AVENUE{tuple_delimiter}GEO{tuple_delimiter}A street in Seattle where the plaintiffs' property is located)
+{record_delimiter}
+("entity"{tuple_delimiter}SHELBY STREET{tuple_delimiter}GEO{tuple_delimiter}A street in Seattle from which earth slid onto the plaintiffs' property)
+{record_delimiter}
+("entity"{tuple_delimiter}EASTLAKE AVENUE{tuple_delimiter}GEO{tuple_delimiter}A street parallel to Fairview Avenue and a block east of it)
+{record_delimiter}
+("entity"{tuple_delimiter}PROPERTY{tuple_delimiter}OBJECT{tuple_delimiter}The property owned by the plaintiffs at the northeast corner of Fairview Avenue and Shelby Street)
+{record_delimiter}
+("entity"{tuple_delimiter}FILL{tuple_delimiter}OBJECT{tuple_delimiter}Earth and material used to extend Shelby Street and improve Eastlake Avenue)
+{record_delimiter}
+("entity"{tuple_delimiter}DRAIN{tuple_delimiter}OBJECT{tuple_delimiter}A drainage system laid through the fill to carry off surface water)
+{record_delimiter}
+("entity"{tuple_delimiter}CERTAIN PERSONS{tuple_delimiter}GROUP{tuple_delimiter}Individuals who dumped earth on the lot at the southwest corner of Eastlake and Shelby, augmenting the fill)
+{record_delimiter}
+("relationship"{tuple_delimiter}PLAINTIFFS{tuple_delimiter}CITY OF SEATTLE{tuple_delimiter}The plaintiffs are suing the city of Seattle for property damage{tuple_delimiter}9)
+{record_delimiter}
+("relationship"{tuple_delimiter}FAIRVIEW AVENUE{tuple_delimiter}SHELBY STREET{tuple_delimiter}Shelby Street is the source of the earth that slid onto the property on Fairview Avenue{tuple_delimiter}7)
+{record_delimiter}
+("relationship"{tuple_delimiter}EASTLAKE AVENUE{tuple_delimiter}FAIRVIEW AVENUE{tuple_delimiter}Eastlake Avenue is parallel to Fairview Avenue and a block east of it{tuple_delimiter}5)
+{record_delimiter}
+("relationship"{tuple_delimiter}FILL{tuple_delimiter}EASTLAKE AVENUE{tuple_delimiter}The fill was used to improve Eastlake Avenue and extended into Shelby Street{tuple_delimiter}6)
+{record_delimiter}
+("relationship"{tuple_delimiter}DRAIN{tuple_delimiter}FILL{tuple_delimiter}The drain was laid through the fill to carry off surface water{tuple_delimiter}6)
+{record_delimiter}
+("relationship"{tuple_delimiter}CERTAIN PERSONS{tuple_delimiter}FILL{tuple_delimiter}Certain persons augmented the fill by dumping earth on the lot at the southwest corner of Eastlake and Shelby{tuple_delimiter}5)
+{completion_delimiter}
+#############################
+
+
 Example 2:
-Entity_types: ORGANIZATION
-Text:
-TechGlobal's (TG) stock skyrocketed in its opening day on the Global Exchange Thursday. But IPO experts warn that the semiconductor corporation's debut on the public markets isn't indicative of how other newly listed companies may perform.
 
-TechGlobal, a formerly public company, was taken private by Vision Holdings in 2014. The well-established chip designer says it powers 85% of premium smartphones.
-######################
-Output:
-("entity"{tuple_delimiter}TECHGLOBAL{tuple_delimiter}ORGANIZATION{tuple_delimiter}TechGlobal is a stock now listed on the Global Exchange which powers 85% of premium smartphones)
+text:
+1908 to 1921, the land was unused, unoccupied, unimproved, and unfenced, and substantially in a wild state covered with second growth trees and underbrush. The undisputed evidence shows that appellant’s grantor had no actual knowledge of the adverse user by the city.
+To acquire an easement by prescription, the owner must know of, and acquiesce in, the adverse user, or the use must be so open, notorious, visible and uninterrupted that knowledge and acquiescence will be presumed.
+“All the authorities agree that, in order to bar the true owner of land from recovering it from an occupant in adverse possession and claiming ownership through the operation of the statute of limitations, the possession must have been, for the whole period prescribed by the statute, actual, open, visible, notorious, continuous and hostile to the true owner’s title and to the world at large.” 1 E. C. L. 686.
+“No prescriptive right to the
+------------------------
+output:
+("entity"{tuple_delimiter}LAND{tuple_delimiter}PROPERTY{tuple_delimiter}The land in question was unused, unoccupied, unimproved, and unfenced from 1908 to 1921, covered with second growth trees and underbrush)
 {record_delimiter}
-("entity"{tuple_delimiter}VISION HOLDINGS{tuple_delimiter}ORGANIZATION{tuple_delimiter}Vision Holdings is a firm that previously owned TechGlobal)
+("entity"{tuple_delimiter}APPELLANT'S GRANTOR{tuple_delimiter}PERSON{tuple_delimiter}The individual who transferred the property to the appellant, who had no actual knowledge of the adverse user by the city)
 {record_delimiter}
-("relationship"{tuple_delimiter}TECHGLOBAL{tuple_delimiter}VISION HOLDINGS{tuple_delimiter}Vision Holdings formerly owned TechGlobal from 2014 until present{tuple_delimiter}5)
+("entity"{tuple_delimiter}CITY{tuple_delimiter}ORGANIZATION{tuple_delimiter}The entity that was using the land adversely without the knowledge of the appellant’s grantor)
+{record_delimiter}
+("entity"{tuple_delimiter}EASEMENT BY PRESCRIPTION{tuple_delimiter}LEGAL CONCEPT{tuple_delimiter}A legal right to use someone else's land, acquired by continuous and open use over a period of time without the owner's permission)
+{record_delimiter}
+("entity"{tuple_delimiter}ADVERSE USER{tuple_delimiter}LEGAL CONCEPT{tuple_delimiter}The use of property in a manner that is hostile to the interests of the true owner)
+{record_delimiter}
+("entity"{tuple_delimiter}STATUTE OF LIMITATIONS{tuple_delimiter}LEGAL CONCEPT{tuple_delimiter}A law prescribing the time period within which legal action must be taken to recover property from an adverse possessor)
+{record_delimiter}
+("entity"{tuple_delimiter}ADVERSE POSSESSION{tuple_delimiter}LEGAL CONCEPT{tuple_delimiter}A method of acquiring title to property by possessing it in a manner that is actual, open, visible, notorious, continuous, and hostile to the true owner's title)
+{record_delimiter}
+("relationship"{tuple_delimiter}LAND{tuple_delimiter}APPELLANT'S GRANTOR{tuple_delimiter}The land was transferred by the appellant's grantor, who had no knowledge of the adverse user{tuple_delimiter}7)
+{record_delimiter}
+("relationship"{tuple_delimiter}CITY{tuple_delimiter}LAND{tuple_delimiter}The city was using the land adversely without the knowledge of the appellant’s grantor{tuple_delimiter}8)
+{record_delimiter}
+("relationship"{tuple_delimiter}EASEMENT BY PRESCRIPTION{tuple_delimiter}ADVERSE USER{tuple_delimiter}To acquire an easement by prescription, the adverse user must be known or presumed known by the owner{tuple_delimiter}9)
+{record_delimiter}
+("relationship"{tuple_delimiter}ADVERSE POSSESSION{tuple_delimiter}STATUTE OF LIMITATIONS{tuple_delimiter}Adverse possession requires continuous and hostile possession for the period prescribed by the statute of limitations{tuple_delimiter}9)
+{record_delimiter}
+("relationship"{tuple_delimiter}ADVERSE POSSESSION{tuple_delimiter}ADVERSE USER{tuple_delimiter}Adverse possession involves the adverse user of the property{tuple_delimiter}9)
 {completion_delimiter}
+#############################
 
-######################
-Example 3:
-Entity_types: ORGANIZATION,GEO,PERSON
-Text:
-Five Aurelians jailed for 8 years in Firuzabad and widely regarded as hostages are on their way home to Aurelia.
 
-The swap orchestrated by Quintara was finalized when $8bn of Firuzi funds were transferred to financial institutions in Krohaara, the capital of Quintara.
 
-The exchange initiated in Firuzabad's capital, Tiruzia, led to the four men and one woman, who are also Firuzi nationals, boarding a chartered flight to Krohaara.
-
-They were welcomed by senior Aurelian officials and are now on their way to Aurelia's capital, Cashion.
-
-The Aurelians include 39-year-old businessman Samuel Namara, who has been held in Tiruzia's Alhamia Prison, as well as journalist Durke Bataglani, 59, and environmentalist Meggie Tazbah, 53, who also holds Bratinas nationality.
-######################
-Output:
-("entity"{tuple_delimiter}FIRUZABAD{tuple_delimiter}GEO{tuple_delimiter}Firuzabad held Aurelians as hostages)
-{record_delimiter}
-("entity"{tuple_delimiter}AURELIA{tuple_delimiter}GEO{tuple_delimiter}Country seeking to release hostages)
-{record_delimiter}
-("entity"{tuple_delimiter}QUINTARA{tuple_delimiter}GEO{tuple_delimiter}Country that negotiated a swap of money in exchange for hostages)
-{record_delimiter}
-{record_delimiter}
-("entity"{tuple_delimiter}TIRUZIA{tuple_delimiter}GEO{tuple_delimiter}Capital of Firuzabad where the Aurelians were being held)
-{record_delimiter}
-("entity"{tuple_delimiter}KROHAARA{tuple_delimiter}GEO{tuple_delimiter}Capital city in Quintara)
-{record_delimiter}
-("entity"{tuple_delimiter}CASHION{tuple_delimiter}GEO{tuple_delimiter}Capital city in Aurelia)
-{record_delimiter}
-("entity"{tuple_delimiter}SAMUEL NAMARA{tuple_delimiter}PERSON{tuple_delimiter}Aurelian who spent time in Tiruzia's Alhamia Prison)
-{record_delimiter}
-("entity"{tuple_delimiter}ALHAMIA PRISON{tuple_delimiter}GEO{tuple_delimiter}Prison in Tiruzia)
-{record_delimiter}
-("entity"{tuple_delimiter}DURKE BATAGLANI{tuple_delimiter}PERSON{tuple_delimiter}Aurelian journalist who was held hostage)
-{record_delimiter}
-("entity"{tuple_delimiter}MEGGIE TAZBAH{tuple_delimiter}PERSON{tuple_delimiter}Bratinas national and environmentalist who was held hostage)
-{record_delimiter}
-("relationship"{tuple_delimiter}FIRUZABAD{tuple_delimiter}AURELIA{tuple_delimiter}Firuzabad negotiated a hostage exchange with Aurelia{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}QUINTARA{tuple_delimiter}AURELIA{tuple_delimiter}Quintara brokered the hostage exchange between Firuzabad and Aurelia{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}QUINTARA{tuple_delimiter}FIRUZABAD{tuple_delimiter}Quintara brokered the hostage exchange between Firuzabad and Aurelia{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}SAMUEL NAMARA{tuple_delimiter}ALHAMIA PRISON{tuple_delimiter}Samuel Namara was a prisoner at Alhamia prison{tuple_delimiter}8)
-{record_delimiter}
-("relationship"{tuple_delimiter}SAMUEL NAMARA{tuple_delimiter}MEGGIE TAZBAH{tuple_delimiter}Samuel Namara and Meggie Tazbah were exchanged in the same hostage release{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}SAMUEL NAMARA{tuple_delimiter}DURKE BATAGLANI{tuple_delimiter}Samuel Namara and Durke Bataglani were exchanged in the same hostage release{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}MEGGIE TAZBAH{tuple_delimiter}DURKE BATAGLANI{tuple_delimiter}Meggie Tazbah and Durke Bataglani were exchanged in the same hostage release{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}SAMUEL NAMARA{tuple_delimiter}FIRUZABAD{tuple_delimiter}Samuel Namara was a hostage in Firuzabad{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}MEGGIE TAZBAH{tuple_delimiter}FIRUZABAD{tuple_delimiter}Meggie Tazbah was a hostage in Firuzabad{tuple_delimiter}2)
-{record_delimiter}
-("relationship"{tuple_delimiter}DURKE BATAGLANI{tuple_delimiter}FIRUZABAD{tuple_delimiter}Durke Bataglani was a hostage in Firuzabad{tuple_delimiter}2)
-{completion_delimiter}
-
-######################
 -Real Data-
 ######################
-Entity_types: {entity_types}
-Text: {input_text}
+text: {input_text}
 ######################
-Output:
+output:
