@@ -44,10 +44,16 @@ embeddings:
 
 input:
   type: file # or blob
-  file_type: text # or csv
+  file_type: csv # or csv text
   base_dir: "input"
   file_encoding: utf-8
-  file_pattern: ".*\\.txt$"
+  file_pattern: ".*\\.csv$"
+  source_column: id                # Adjust as needed
+  text_column: description         # Update with the correct column name
+  title_column: name               # Adjust as needed
+  document_attribute_columns:
+    - court_id
+    - court_name
 
 chunks:
   size: 1200
