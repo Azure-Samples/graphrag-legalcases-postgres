@@ -71,16 +71,11 @@ The steps below guides you to deploy the Azure services necessary for this solut
     ```bash
     azd auth login
     ```
-5. Create a new azd environment
-   ```bash
-    azd env new
-    ```
-   - Enter a name that will be used for the resource group.
-   - This will create a new folder in the .azure folder, and set it as the active environment for any calls to azd going forward.
-6. Provision the resources
+5. Provision the resources
     ```bash
     azd up
     ```
+    - Enter a name that will be used for the resource group.    
     - This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure Container App Service.
 
 ## Contributing
