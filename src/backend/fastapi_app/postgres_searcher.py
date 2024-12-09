@@ -120,7 +120,10 @@ class PostgresSearcher:
         # Convert results to SQLAlchemy models
         row_models = []
         for row in results[:top]:
-            id = row.id  # Adjust if column names differ
+            if retrieval_mode == RetrievalMode.MSRGRAPHRAG:
+                id = row[1]  # Adjust if column names differ
+            else:
+                id = row.id
             # Fetch the corresponding row using the ID
             item = await self.db_session.execute(select(Case).where(Case.id == id))
             # logger.info(f"Item found: {item.scalar()}")

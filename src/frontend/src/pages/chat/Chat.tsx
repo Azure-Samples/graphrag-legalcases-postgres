@@ -50,6 +50,10 @@ const Chat = () => {
                 console.log("GraphRAG");
                 setRetrievalMode(PAIDRetrievalMode.GraphRAG);
                 break;
+            case "MSR GraphRAG":
+                console.log("MSR GraphRAG");
+                setRetrievalMode(PAIDRetrievalMode.MSRGraphRAG);
+                break;
             default:
                 console.warn("Unknown sharedState:", sharedState);
         }

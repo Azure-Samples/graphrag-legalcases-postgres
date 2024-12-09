@@ -6,20 +6,31 @@
 
 encoding_model: cl100k_base # this needs to be matched to your model!
 
+# llm:
+#   api_key: ${GRAPHRAG_API_KEY} # set this in the generated .env file
+#   type: azure_openai_chat # or azure_openai_chat  openai_chat
+#   model: gpt-4o
+#   model_supports_json: true # recommended if this is available for your model.
+#   # audience: "https://cognitiveservices.azure.com/.default"
+#   api_base: https://serdar-azure-open-ai.openai.azure.com
+#   api_version: 2024-02-15-preview
+#   # organization: <organization_id>
+#   deployment_name: gpt-4o
+
 llm:
   api_key: ${GRAPHRAG_API_KEY} # set this in the generated .env file
-  type: openai_chat # or azure_openai_chat
-  model: gpt-4-turbo-preview
+  type: azure_openai_chat # or azure_openai_chat  openai_chat
+  model: gpt-4o-mini
   model_supports_json: true # recommended if this is available for your model.
   # audience: "https://cognitiveservices.azure.com/.default"
-  # api_base: https://<instance>.openai.azure.com
-  # api_version: 2024-02-15-preview
+  api_base: https://serdar-azure-open-ai.openai.azure.com
+  api_version: 2024-08-01-preview
   # organization: <organization_id>
-  # deployment_name: <azure_model_deployment_name>
+  deployment_name: gpt-4o-mini
 
 parallelization:
   stagger: 0.3
-  # num_threads: 50
+  num_threads: 50
 
 async_mode: threaded # or asyncio
 
@@ -32,13 +43,13 @@ embeddings:
     overwrite: true
   llm:
     api_key: ${GRAPHRAG_API_KEY}
-    type: openai_embedding # or azure_openai_embedding
+    type: azure_openai_embedding # or azure_openai_embedding  openai_embedding
     model: text-embedding-3-small
-    # api_base: https://<instance>.openai.azure.com
-    # api_version: 2024-02-15-preview
+    api_base: https://serdar-azure-open-ai.openai.azure.com
+    api_version: "2023-05-15"
     # audience: "https://cognitiveservices.azure.com/.default"
     # organization: <organization_id>
-    # deployment_name: <azure_model_deployment_name>
+    deployment_name: text-embedding-3-small
 
 ### Input settings ###
 
@@ -48,9 +59,9 @@ input:
   base_dir: "input"
   file_encoding: utf-8
   file_pattern: ".*\\.csv$"
-  source_column: id                # Adjust as needed
-  text_column: description         # Update with the correct column name
-  title_column: name               # Adjust as needed
+  source_column: id
+  text_column: description
+  title_column: name
   document_attribute_columns:
     - court_id
     - court_name

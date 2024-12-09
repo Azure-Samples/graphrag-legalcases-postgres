@@ -21,8 +21,12 @@ const Layout = () => {
         setSelectedMode(event.target.value);
         const newValue = event.target.value as PAIDRetrievalMode;
         console.log("handleModeChange: " + (event.target.value as PAIDRetrievalMode).toString());
-        if (sharedState == PAIDRetrievalMode.Vector && (newValue == PAIDRetrievalMode.Semantic || newValue == PAIDRetrievalMode.GraphRAG) ||
-            sharedState == PAIDRetrievalMode.Semantic && newValue == PAIDRetrievalMode.GraphRAG) {
+        if (
+            sharedState == PAIDRetrievalMode.Vector && (newValue == PAIDRetrievalMode.Semantic || newValue == PAIDRetrievalMode.GraphRAG || newValue == PAIDRetrievalMode.MSRGraphRAG) ||
+            sharedState == PAIDRetrievalMode.Semantic && (newValue == PAIDRetrievalMode.Vector || newValue == PAIDRetrievalMode.GraphRAG || newValue == PAIDRetrievalMode.MSRGraphRAG) ||
+            sharedState == PAIDRetrievalMode.GraphRAG && (newValue == PAIDRetrievalMode.Vector || newValue == PAIDRetrievalMode.Semantic || newValue == PAIDRetrievalMode.MSRGraphRAG) ||
+            sharedState == PAIDRetrievalMode.MSRGraphRAG && (newValue == PAIDRetrievalMode.Vector || newValue == PAIDRetrievalMode.Semantic || newValue == PAIDRetrievalMode.GraphRAG)
+        ) {
             // Show loading screen for 1 second
             setIsLoading(true);
             setTimeout(() => {
@@ -72,6 +76,16 @@ const Layout = () => {
                                 className={styles.radioInput}
                             />
                             GraphRAG + Semantic Ranker
+                        </label>
+                        <label>
+                            <input
+                                type="radio"
+                                value="MSR GraphRAG"
+                                checked={selectedMode === "MSR GraphRAG"}
+                                onChange={handleModeChange}
+                                className={styles.radioInput}
+                            />
+                            MSR GraphRAG
                         </label>
                     </div>
 
