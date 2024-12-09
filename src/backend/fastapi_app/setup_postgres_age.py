@@ -49,16 +49,12 @@ def configure_age(conn, app_identity_name):
 
 
 def main():
-    # Fetch environment variables
     host = os.getenv("POSTGRES_HOST")
-    username = os.getenv("POSTGRES_ADMIN")
+    username = "legalcaseadmin"
     database = os.getenv("POSTGRES_DATABASE")
     sslmode = os.getenv("POSTGRES_SSLMODE", "require")  # Default to 'require' SSL mode
     app_identity_name = os.getenv("APP_IDENTITY_NAME")
-
-    filepath = os.path.join(os.path.dirname(__file__), "postgres_token.txt")
-    with open(filepath) as file:
-        password = file.read().strip()
+    password = os.getenv("POSTGRES_ADMIN_LOGIN_KEY")
 
     # Ensure environment variables are set
     if not all([host, username, password, database, app_identity_name]):
@@ -69,6 +65,7 @@ def main():
     if sslmode.lower() in ["require", "verify-ca", "verify-full"]:
         sslmode_params["sslmode"] = sslmode
 
+    conn = None
     try:
         # Connect to PostgreSQL using psycopg2
         conn = psycopg2.connect(

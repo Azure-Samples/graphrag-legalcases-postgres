@@ -164,6 +164,11 @@ async def ingest_cases_to_graph_from_postgresql(session, app_identity_name):
     await session.commit()
     logger.info("Granted permissions to the case_graph schema.")
 
+    await session.execute(text('GRANT ALL ON SCHEMA case_graph TO "legalcaseadmin";'))
+    await session.execute(text('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "legalcaseadmin";'))
+    await session.commit()
+    logger.info("Granted privileges on schema case_graph to legalcaseadmin.")
+
     for case in cases:
         case_id, case_text = case
         case_text_sanitized = sanitize_case_text(case_text)
@@ -257,6 +262,9 @@ async def verify_age_query(session, app_identity_name):
     await session.commit()
     await session.execute(text(f'GRANT ALL ON SCHEMA case_graph TO "{app_identity_name}";'))
     await session.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{app_identity_name}";'))
+    await session.commit()
+    await session.execute(text('GRANT ALL ON SCHEMA case_graph TO "legalcaseadmin";'))
+    await session.execute(text('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "legalcaseadmin";'))
     await session.commit()
     logger.info("AGE queries are verified.")
 

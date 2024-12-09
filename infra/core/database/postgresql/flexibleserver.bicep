@@ -8,12 +8,15 @@ param storage object
 @allowed([
   'Password'
   'EntraOnly'
+  'PostgreSQLAndEntra'
 ])
-param authType string = 'Password'
+param authType string = 'PostgreSQLAndEntra'
 
-param administratorLogin string = ''
-@secure()
-param administratorLoginPassword string = ''
+@description('PostgreSQL administrator login')
+
+param administratorLogin string = 'legalcaseadmin'
+
+param administratorLoginKey string = 'VWttxXrZ5i8'
 
 @description('Entra admin role name')
 param entraAdministratorName string = ''
@@ -27,7 +30,7 @@ param entraAdministratorObjectId string = ''
   'Group'
   'ServicePrincipal'
 ])
-param entraAdministratorType string = 'User'
+param entraAdministratorType string = 'ServicePrincipal'
 
 
 param databaseNames array = []
@@ -39,16 +42,12 @@ param allowedSingleIPs array = []
 param version string
 
 
-var authProperties = authType == 'Password' ? {
+var authProperties = {
   administratorLogin: administratorLogin
-  administratorLoginPassword: administratorLoginPassword
-  authConfig: {
-    passwordAuth: 'Enabled'
-  }
-} : {
+  administratorLoginPassword: administratorLoginKey
   authConfig: {
     activeDirectoryAuth: 'Enabled'
-    passwordAuth: 'Disabled'
+    passwordAuth: 'Enabled'
   }
 }
 
@@ -62,6 +61,9 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2022-12-01' =
     storage: storage
     highAvailability: {
       mode: 'Disabled'
+    }
+    authentication: {
+      activeDirectoryAuth: authType
     }
   })
 
@@ -142,3 +144,4 @@ resource sharedPreloadLibrariesConfig 'Microsoft.DBforPostgreSQL/flexibleServers
 
 
 output POSTGRES_DOMAIN_NAME string =  postgresServer.properties.fullyQualifiedDomainName
+output POSTGRES_ADMIN_LOGIN_KEY string =  administratorLoginKey

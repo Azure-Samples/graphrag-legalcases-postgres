@@ -56,9 +56,7 @@ class PostgresSearcher:
         filter_clause_where, filter_clause_and = self.build_filter_clause(filters)
         table_name = Case.__tablename__
 
-        token_file = Path(__file__).parent / "postgres_token.txt"
-
-        if token_file.exists() and retrieval_mode == RetrievalMode.GRAPHRAG:
+        if retrieval_mode == RetrievalMode.GRAPHRAG:
             try:
                 script_path = Path(__file__).parent / "setup_postgres_age.py"
 
