@@ -9,7 +9,8 @@ export const enum RetrievalMode {
 export const enum PAIDRetrievalMode {
     Vector = "Vector Search",
     Semantic = "Semantic Ranker",
-    GraphRAG = "GraphRAG"
+    GraphRAG = "GraphRAG",
+    MSRGraphRAG = "MSR GraphRAG"
 }
 
 export type ChatAppRequestOverrides = {

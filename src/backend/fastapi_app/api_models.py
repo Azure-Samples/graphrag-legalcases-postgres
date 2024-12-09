@@ -20,6 +20,7 @@ class RetrievalMode(str, Enum):
     VECTOR = "Vector Search"
     SEMANTIC = "Semantic Ranker"
     GRAPHRAG = "GraphRAG"
+    MSRGRAPHRAG = "MSR GraphRAG"
 
 
 class ChatRequestOverrides(BaseModel):
