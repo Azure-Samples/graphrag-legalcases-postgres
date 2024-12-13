@@ -29,7 +29,7 @@ def configure_age(conn, app_identity_name):
         logger.info("Executing first MATCH query...")
         cur.execute(
             """SELECT * FROM cypher('case_graph', $$ 
-                                    MATCH ()-[r:CITES]->() 
+                                    MATCH ()-[r:REF]->() 
                                     RETURN COUNT(r) AS cites_count 
                                     $$) AS (cites_count agtype);"""
         )
@@ -39,7 +39,7 @@ def configure_age(conn, app_identity_name):
         logger.info("Executing second MATCH query...")
         cur.execute(
             """SELECT * FROM cypher('case_graph', $$ 
-                                    MATCH ()-[r:CITES]->() 
+                                    MATCH ()-[r:REF]->() 
                                     RETURN COUNT(r) AS cites_count 
                                     $$) AS (cites_count agtype);"""
         )

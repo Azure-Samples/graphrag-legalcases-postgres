@@ -56,53 +56,44 @@ class PostgresSearcher:
         filter_clause_where, filter_clause_and = self.build_filter_clause(filters)
         table_name = Case.__tablename__
 
-        if retrieval_mode == RetrievalMode.GRAPHRAG:
-            try:
-                script_path = Path(__file__).parent / "setup_postgres_age.py"
+        try:
+            script_path = Path(__file__).parent / "setup_postgres_age.py"
 
-                if not script_path.exists():
-                    logger.error(f"Setup script not found at {script_path}")
-                    raise FileNotFoundError(f"Script {script_path} does not exist.")
+            if not script_path.exists():
+                logger.error(f"Setup script not found at {script_path}")
+                raise FileNotFoundError(f"Script {script_path} does not exist.")
 
-                logger.info("Running setup_postgres_age.py...")
-                subprocess.run(["python", str(script_path)], check=True)
-                logger.info("setup_postgres_age.py completed successfully.")
+            logger.info("Running setup_postgres_age.py...")
+            subprocess.run(["python", str(script_path)], check=True)
+            logger.info("setup_postgres_age.py completed successfully.")
 
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Error occurred while running setup_postgres_age.py: {e}")
-            except Exception as e:
-                logger.error(f"Unexpected error: {e}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while running setup_postgres_age.py: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
 
         await self.db_session.execute(text('SET search_path = ag_catalog, "$user", public;'))
 
-        if retrieval_mode == RetrievalMode.GRAPHRAG:
-            function_call = """
-                SELECT * FROM get_vector_semantic_graphrag_cases(
-                    :query_text, 
-                    CAST(:embedding AS vector(1536)), 
-                    :top_n, 
-                    :consider_n
-                );
-            """
-        elif retrieval_mode == RetrievalMode.SEMANTIC:
-            function_call = """
-                SELECT * FROM get_vector_semantic_cases(
-                    :query_text, 
-                    CAST(:embedding AS vector(1536)), 
-                    :top_n, 
-                    :consider_n
-                );
-            """
-        elif retrieval_mode == RetrievalMode.VECTOR:
-            function_call = """
-                SELECT * FROM get_vector_cases(
-                    :query_text, 
-                    CAST(:embedding AS vector(1536)), 
-                    :top_n
-                );
-            """
-        else:
+        ranking_type_map = {
+            RetrievalMode.GRAPHRAG: "score",
+            RetrievalMode.SEMANTIC: "semantic_rank",
+            RetrievalMode.VECTOR: "vector_rank",
+        }
+
+        if retrieval_mode not in ranking_type_map:
             raise ValueError("Invalid retrieval_mode. Options are: VECTOR, SEMANTIC, GRAPHRAG")
+
+        ranking_type = ranking_type_map[retrieval_mode]
+
+        function_call = f"""
+            SELECT * FROM get_vector_semantic_graphrag_optimized(
+                :query_text, 
+                CAST(:embedding AS vector(1536)), 
+                :top_n, 
+                :consider_n,
+                '{ranking_type}'
+            );
+        """
 
         sql = text(function_call).columns(
             column("rrf.id", String),
@@ -132,6 +123,7 @@ class PostgresSearcher:
             id = row.id  # Adjust if column names differ
             # Fetch the corresponding row using the ID
             item = await self.db_session.execute(select(Case).where(Case.id == id))
+            # logger.info(f"Item found: {item.scalar()}")
             row_models.append(item.scalar())
         return row_models
 
