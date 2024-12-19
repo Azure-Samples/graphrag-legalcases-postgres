@@ -2,15 +2,22 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
+
+# Calculate the correct path to src/backend and add it to sys.path
+current_dir = os.path.abspath(os.path.dirname(__file__))
+backend_dir = os.path.abspath(os.path.join(current_dir, ".."))
+sys.path.append(backend_dir)
+
+# Verify paths
+fastapi_app_dir = os.path.join(backend_dir, "fastapi_app")
 
 from dotenv import load_dotenv
 from sqlalchemy import text
-
 from fastapi_app.postgres_engine import create_postgres_engine_from_args, create_postgres_engine_from_env
 from fastapi_app.postgres_models import Base
 
 logger = logging.getLogger("legalcaseapp")
-
 
 async def create_db_schema(engine):
     async with engine.begin() as conn:
@@ -20,86 +27,41 @@ async def create_db_schema(engine):
         logger.info("Enabling the pgvector extension for Postgres...")
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
-        # Load environment variables for Azure ML endpoint settings
         scoring_endpoint = os.getenv("AZURE_ML_SCORING_ENDPOINT")
         endpoint_key = os.getenv("AZURE_ML_ENDPOINT_KEY")
 
-        if not scoring_endpoint or not endpoint_key:
-            logger.error(
-                "Azure ML endpoint settings are missing. Please set AZURE_ML_SCORING_ENDPOINT and AZURE_ML_ENDPOINT_KEY in the environment."
-            )
-            return
+    if not scoring_endpoint or not endpoint_key:
+        raise EnvironmentError("Azure ML endpoint settings missing.")
 
-        # Set Azure ML endpoint and key
-        logger.info("Setting Azure ML endpoint and API key...")
-        await conn.execute(text(f"SELECT azure_ai.set_setting('azure_ml.scoring_endpoint', '{scoring_endpoint}');"))
-        await conn.execute(text(f"SELECT azure_ai.set_setting('azure_ml.endpoint_key', '{endpoint_key}');"))
-
-        # Create the semantic_relevance function
-        logger.info("Creating semantic_relevance function...")
-        await conn.execute(
-            text("""
-            CREATE OR REPLACE FUNCTION semantic_relevance(query TEXT, n INT)
-            RETURNS jsonb AS $$
-            DECLARE
-                json_pairs jsonb;
-                result_json jsonb;
+async def assign_role_for_webapp(engine, app_identity_name):
+    async with engine.begin() as conn:
+        # Ensure schema ag_catalog exists
+        await conn.execute(text("""
+            DO $$
             BEGIN
-                json_pairs := generate_json_pairs(query, n);
-                result_json := azure_ml.invoke(
-                    json_pairs,
-                    deployment_name => 'bge-v2-m3-1',
-                    timeout_ms => 180000
-                );
-                RETURN (
-                    SELECT result_json as result
-                );
-            END $$ LANGUAGE plpgsql;
-        """)
-        )
+                IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'ag_catalog') THEN
+                    CREATE SCHEMA ag_catalog;
+                END IF;
+            END
+            $$;
+        """))
 
-        await conn.execute(
-            text("""
-                DROP TABLE IF EXISTS public.cases_updated;
-        """)
-        )
-        logger.info("Creating database tables and indexes...")
-        await conn.run_sync(Base.metadata.create_all)
+        logger.info(f"Creating a PostgreSQL role for identity {app_identity_name}")
+        await conn.execute(text(f"SELECT * FROM pgaadauth_create_principal('{app_identity_name}', false, false)"))
 
-        # Enable the Apache AGE extension and load the library
-        logger.info("Enabling the Apache AGE extension for Postgres...")
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS age;"))
-        await conn.execute(text('SET search_path = ag_catalog, "$user", public;'))
-
-    await conn.close()
-
-
-async def main():
-    parser = argparse.ArgumentParser(description="Create database schema")
-    parser.add_argument("--host", type=str, help="Postgres host")
-    parser.add_argument("--username", type=str, help="Postgres username")
-    parser.add_argument("--password", type=str, help="Postgres password")
-    parser.add_argument("--database", type=str, help="Postgres database")
-    parser.add_argument("--sslmode", type=str, help="Postgres sslmode")
-
-    # if no args are specified, use environment variables
-    args = parser.parse_args()
-    if args.host is None:
-        engine = await create_postgres_engine_from_env()
-    else:
-        engine = await create_postgres_engine_from_args(args)
-
-    await create_db_schema(engine)
-
-    await engine.dispose()
-
-    logger.info("Database extension and tables created successfully.")
-
+        logger.info(f"Granting permissions to {app_identity_name}")
+        await conn.execute(text(f'GRANT USAGE ON SCHEMA ag_catalog TO "{app_identity_name}"'))
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.WARNING)
-    logger.setLevel(logging.INFO)
+    parser = argparse.ArgumentParser(description="Setup database for legal cases.")
+    parser.add_argument("--host", required=True, help="Host for PostgreSQL")
+    parser.add_argument("--username", required=True, help="Username for PostgreSQL")
+    parser.add_argument("--database", required=True, help="Database name for PostgreSQL")
+    parser.add_argument("--app_identity_name", required=True, help="App Identity Name for PostgreSQL role")
+    args = parser.parse_args()
 
-    load_dotenv(override=True)
+    async def main():
+        engine = create_postgres_engine_from_args(args.host, args.username, args.database)
+        await assign_role_for_webapp(engine, args.app_identity_name)
 
     asyncio.run(main())

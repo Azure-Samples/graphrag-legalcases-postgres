@@ -10,5 +10,9 @@ if ([string]::IsNullOrEmpty($POSTGRES_HOST) -or [string]::IsNullOrEmpty($POSTGRE
     Write-Host "Can't find POSTGRES_HOST, POSTGRES_USERNAME, and SERVICE_WEB_IDENTITY_NAME environment variables. Make sure you run azd up first."
     exit 1
 }
+Write-Host "Running script with these parameters:"
+Write-Host "Host: $POSTGRES_HOST"
+Write-Host "Username: $POSTGRES_USERNAME"
+Write-Host "App Identity Name: $APP_IDENTITY_NAME"
 
-python ./src/backend/fastapi_app/setup_postgres_azurerole.py --host $POSTGRES_HOST --username $POSTGRES_USERNAME --app-identity-name $APP_IDENTITY_NAME
+py ./src/backend/fastapi_app/setup_postgres_azurerole.py --host $POSTGRES_HOST --username $POSTGRES_USERNAME --app-identity-name $APP_IDENTITY_NAME --database $POSTGRES_DB

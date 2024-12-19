@@ -1,22 +1,27 @@
 import argparse
 import asyncio
 import csv
-import json
 import logging
 import os
 import sys
 
+# Ensuring proper path inclusion
+current_dir = os.path.abspath(os.path.dirname(__file__))
+backend_dir = os.path.abspath(os.path.join(current_dir, ".."))
+sys.path.append(backend_dir)
+
+# Debug paths configuration
+
+fastapi_app_dir = os.path.join(backend_dir, "fastapi_app")
+
+
 from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-
-from fastapi_app.postgres_engine import (
-    create_postgres_engine_from_args,
-    create_postgres_engine_from_env,
-)
+from fastapi_app.postgres_engine import create_postgres_engine_from_args, create_postgres_engine_from_env
 
 # Increase the field size limit
-csv.field_size_limit(sys.maxsize)
+csv.field_size_limit(2**31 - 1)
 
 logger = logging.getLogger("legalcaseapp")
 
@@ -58,7 +63,7 @@ async def initialize_gold_dataset(session: AsyncSession):
 
 
 async def seed_data_from_csv(engine: AsyncEngine, app_identity_name):
-    csv_file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "data/cases_final.csv"))
+    csv_file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..", "data/cases_updated.csv"))
     logger.info(f"Starting data seeding from {csv_file_path} using parameterized INSERT statements.")
 
     async with AsyncSession(engine) as session:
@@ -155,9 +160,7 @@ async def ingest_cases_to_graph_from_postgresql(session, app_identity_name):
     await session.execute(text("CREATE EXTENSION IF NOT EXISTS age;"))
     await session.execute(text('SET search_path = ag_catalog, "$user", public;'))
     graph_name = "case_graph"
-
     await session.execute(text(f"SELECT create_graph('{graph_name}');"))
-
     logger.info("case_graph database is created successfully.")
 
     # New grants on case_graph schema
@@ -166,27 +169,36 @@ async def ingest_cases_to_graph_from_postgresql(session, app_identity_name):
     await session.commit()
     logger.info("Granted permissions to the case_graph schema.")
 
-    await session.execute(text('GRANT ALL ON SCHEMA case_graph TO "legalcaseadmin";'))
-    await session.execute(text('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "legalcaseadmin";'))
-    await session.commit()
-    await session.execute(text('GRANT USAGE ON SCHEMA public TO "legalcaseadmin"'))
-    await session.execute(text('GRANT CREATE ON SCHEMA public TO "legalcaseadmin"'))
-    await session.execute(text('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "legalcaseadmin"'))
-    await session.execute(
-        text(
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-            'GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES TO "legalcaseadmin"'
-        )
-    )
-    await session.commit()
-    logger.info("Granted privileges on schema case_graph to legalcaseadmin.")
+    for case in cases:
+        case_id, case_text = case
+        case_text_sanitized = sanitize_case_text(case_text)
 
-    query = """
-            SELECT create_case_in_case_graph(cases_updated.id) 
-            FROM public.cases_updated;
-        """
-    await session.execute(text(query))
+        try:
+            query = f"""
+                SELECT * FROM ag_catalog.cypher('case_graph', $$
+                    CREATE (c:Case {{id: '{case_id}', text: '{case_text_sanitized}'}})
+                $$) AS (c ag_catalog.agtype);
+            """
+            await session.execute(text(query))
 
+            processed_rows += 1
+
+            # Commit every batch to ensure data is persisted
+            if processed_rows % BATCH_SIZE == 0:
+                await session.commit()
+
+        except Exception as e:
+            skipped_rows += 1
+            error_count += 1
+            logger.error(f"Skipped case {case_id} due to error: {e}")
+
+            # Stop the process if 3 errors have occurred
+            if error_count >= max_errors:
+                logger.error(f"Encountered {error_count} errors. Stopping further processing.")
+                break
+            continue
+
+    # Final commit after the loop
     await session.commit()
 
     logger.info(f"Inserted {processed_rows} case nodes into the graph from the PostgreSQL `cases` table.")
@@ -198,85 +210,70 @@ async def create_edges_from_citations(session):
     Creates edges in the `case_graph` graph based on citation relationships
     in the `cases_updated` table.
     """
-    try:
-        query_prep = """
-            WITH edges AS (
-                SELECT c1.id AS id_from, c2.id AS id_to
-                FROM public.cases_updated c1
-                LEFT JOIN 
-                    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
-                LEFT JOIN 
-                    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
-                JOIN public.cases_updated c2 
-                    ON case_ids::text = c2.id
-                LIMIT 10
-            )
-            SELECT create_case_link_in_case_graph(edges.id_from, edges.id_to) 
-            FROM edges
-            limit 1;
-        """
-        await session.execute(text(query_prep))
-        await session.commit()
+    define_edges_query = text("""
+        WITH edges AS (
+            SELECT DISTINCT c1.id AS id_from, c2.id AS id_to
+            FROM cases_updated c1
+            LEFT JOIN LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
+            LEFT JOIN LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
+            JOIN cases_updated c2 ON case_ids::text = c2.id
+        )
+        SELECT id_from, id_to FROM edges;
+    """)
 
-        query_edges = """
-            WITH edges AS (
-                SELECT DISTINCT c1.id AS id_from, c2.id AS id_to
-                FROM public.cases_updated c1
-                LEFT JOIN 
-                    LATERAL jsonb_array_elements(c1.data -> 'cites_to') AS cites_to_element ON true
-                LEFT JOIN 
-                    LATERAL jsonb_array_elements(cites_to_element -> 'case_ids') AS case_ids ON true
-                JOIN public.cases_updated c2 
-                    ON case_ids::text = c2.id
-            ), gedges AS (
-                SELECT edges.id_from, node1.id AS gid_from, edges.id_to, node2.id AS gid_to
-                FROM edges
-                LEFT JOIN case_graph."case" node1 ON node1.properties ->> 'case_id'::text = edges.id_from
-                LEFT JOIN case_graph."case" node2 ON node2.properties ->> 'case_id'::text = edges.id_to
-            )
-            INSERT INTO case_graph."REF" (start_id, end_id)
-            SELECT gid_from AS start_id, gid_to AS end_id
-            FROM gedges where gid_from is not null and gid_to is not null;
+    result = await session.execute(define_edges_query)
+    edges = result.fetchall()
+
+    for id_from, id_to in edges:
+        cypher_query = f"""
+        SELECT * FROM ag_catalog.cypher('case_graph', $$
+            MATCH (a:Case), (b:Case)
+            WHERE a.id = '{id_from}' AND b.id = '{id_to}'
+            CREATE (a)-[\:CITES]->(b)
+            RETURN a, b
+        $$) AS (a ag_catalog.agtype, b ag_catalog.agtype);
         """
-        await session.execute(text(query_edges))
-        await session.commit()
-        logger.info("Edges created successfully in the `case_graph` based on citation relationships.")
-    except Exception as e:
-        logger.error(f"Error creating edges in the `case_graph`: {e}")
-        await session.rollback()
+        await session.execute(text(cypher_query))
+
+    await session.commit()
+    logger.info("Edges created successfully in the `case_graph` based on citation relationships.")
 
 
 async def verify_age_query(session, app_identity_name):
     await session.execute(text("CREATE EXTENSION IF NOT EXISTS age;"))
     await session.execute(text('SET search_path = ag_catalog, "$user", public;'))
-
     cypher_query_count = """
-    SELECT * from cypher('case_graph', $$
-                    MATCH (n)
-                    RETURN COUNT(n.case_id)
-                $$) as (case_id TEXT);
+        SELECT * FROM cypher('case_graph', $$
+            MATCH ()-[r:CITES]->()
+            RETURN COUNT(r) AS cites_count
+        $$) AS (cites_count agtype);
+    """
+    await session.execute(text(cypher_query_count))
+
+    cypher_query_match = """
+    SELECT * FROM cypher('case_graph', $$ 
+        MATCH (c:Case) 
+        RETURN c.id, c.summary 
+    $$) AS (id agtype, summary agtype);
     """
 
-    await session.execute(text(cypher_query_count))
+    await session.execute(text(cypher_query_match))
 
     await session.commit()
     await session.execute(text(f'GRANT ALL ON SCHEMA case_graph TO "{app_identity_name}";'))
     await session.execute(text(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "{app_identity_name}";'))
     await session.commit()
-    await session.execute(text('GRANT ALL ON SCHEMA case_graph TO "legalcaseadmin";'))
-    await session.execute(text('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA case_graph TO "legalcaseadmin";'))
-    await session.commit()
     logger.info("AGE queries are verified.")
 
 
 async def create_plpgsql_functions(session, app_identity_name):
+    # Define the get_vector_pagerank_rrf_cases function
     function_graphrag = text("""
-        CREATE OR REPLACE FUNCTION get_vector_semantic_graphrag_optimized(
+        CREATE OR REPLACE FUNCTION get_vector_semantic_graphrag_cases(
             query_text TEXT,
             embedding VECTOR,
             top_n INT,
-            consider_n INT,
-            sort_option TEXT
+            consider_n INT
         )
         RETURNS TABLE (
             label            TEXT,
@@ -289,6 +286,153 @@ async def create_plpgsql_functions(session, app_identity_name):
             date             TEXT,
             data             JSONB,
             refs             BIGINT,
+            relevance        DOUBLE PRECISION
+        ) AS $_$
+        BEGIN
+            SET search_path = ag_catalog, "$user", public;
+            
+            RETURN QUERY
+            WITH vector AS (
+                SELECT cases_updated.id,
+                       cases_updated.data#>>'{name_abbreviation}' AS case_name,
+                       cases_updated.data#>>'{decision_date}' AS date,
+                       cases_updated.data,
+                       RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+                FROM cases_updated
+                WHERE (cases_updated.data#>>'{court, id}')::integer IN (9029)
+                ORDER BY description_vector <=> embedding
+                LIMIT consider_n
+            ),
+            json_payload AS (
+                SELECT jsonb_build_object(
+                    'pairs', 
+                    jsonb_agg(
+                        jsonb_build_array(
+                            query_text, 
+                            LEFT(vector.data -> 'casebody' -> 'opinions' -> 0 ->> 'text', 800)
+                        )
+                    )
+                ) AS json_pairs
+                FROM vector
+            ),
+            semantic AS (
+                SELECT elem.relevance::DOUBLE precision AS relevance, elem.ordinality
+                FROM json_payload AS jp,
+                     LATERAL jsonb_array_elements(
+                         azure_ml.invoke(
+                             jp.json_pairs,
+                             deployment_name => 'bge-v2-m3-1',
+                             timeout_ms => 180000
+                         )
+                     ) WITH ORDINALITY AS elem(relevance)
+            ),
+            semantic_ranked AS (
+                SELECT RANK() OVER (ORDER BY semantic.relevance DESC) AS semantic_rank,
+                       semantic.*, vector.*
+                FROM vector
+                JOIN semantic ON vector.vector_rank = semantic.ordinality
+                ORDER BY semantic.relevance DESC
+            ),      
+            graph_query AS (
+                SELECT * FROM ag_catalog.cypher('case_graph', 
+                    $$ MATCH (s)-[r:CITES]->(n) RETURN n.case_id AS case_id, s.case_id AS ref_id $$
+                ) AS (case_id TEXT, ref_id TEXT)
+            ),
+            graph AS (
+                SELECT subquery.id, COUNT(ref_id) AS refs
+                FROM (
+                    SELECT semantic_ranked.id, graph_query.ref_id, c2.description_vector <=> embedding AS ref_cosine
+                    FROM semantic_ranked
+                    LEFT JOIN graph_query
+                    ON semantic_ranked.id = graph_query.case_id
+                    LEFT JOIN cases_updated c2
+                    ON c2.id = graph_query.ref_id
+                    WHERE semantic_ranked.semantic_rank <= 25
+                    ORDER BY ref_cosine
+                    LIMIT 200
+                ) AS subquery
+                GROUP BY subquery.id
+            ),
+            graph2 AS (
+                SELECT semantic_ranked.*, graph.refs 
+                FROM semantic_ranked
+                LEFT JOIN graph ON semantic_ranked.id = graph.id
+            ),
+            graph_ranked AS (
+                SELECT RANK() OVER (ORDER BY COALESCE(graph2.refs, 0) DESC) AS graph_rank, graph2.*
+                FROM graph2
+                ORDER BY graph_rank DESC
+            ),
+            rrf AS (
+                SELECT
+                    gold_dataset.label,
+                    COALESCE(1.0 / (60 + graph_ranked.graph_rank), 0.0) +
+                    COALESCE(1.0 / (60 + graph_ranked.semantic_rank), 0.0) AS score,
+                    graph_ranked.*
+                FROM graph_ranked
+                LEFT JOIN gold_dataset ON graph_ranked.id = gold_dataset.gold_id
+                ORDER BY score DESC
+            )
+            SELECT 
+                rrf.label, rrf.score, rrf.graph_rank, rrf.semantic_rank, rrf.vector_rank, rrf.id, rrf.case_name, rrf.date, rrf.data, rrf.refs, rrf.relevance
+            FROM rrf
+            ORDER BY semantic_rank
+            LIMIT top_n;
+        END;
+        $_$ LANGUAGE plpgsql;
+    """)
+    await session.execute(function_graphrag)
+    await session.commit()
+    logger.info("Function get_vector_semantic_graphrag_cases defined successfully.")
+
+    function_vector = text("""
+        CREATE OR REPLACE FUNCTION get_vector_cases(
+            query_text TEXT,
+            embedding VECTOR,
+            top_n INT
+        )
+        RETURNS TABLE (
+            id               TEXT,
+            case_name        TEXT,
+            date             TEXT,
+            data             JSONB,
+            vector_rank      BIGINT
+        ) AS $_$
+        BEGIN
+            SET search_path = ag_catalog, "$user", public;
+
+            RETURN QUERY
+            SELECT 
+                cases_updated.id,
+                cases_updated.data#>>'{name_abbreviation}' AS case_name,
+                cases_updated.data#>>'{decision_date}' AS date,
+                cases_updated.data,
+                RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+            FROM cases_updated
+            WHERE (cases_updated.data#>>'{court, id}')::integer IN (9029)
+            ORDER BY description_vector <=> embedding
+            LIMIT top_n;
+        END;
+        $_$ LANGUAGE plpgsql;
+    """)
+    await session.execute(function_vector)
+    await session.commit()
+    logger.info("Function get_vector_cases defined successfully.")
+
+    function_semantic = text("""
+        CREATE OR REPLACE FUNCTION get_vector_semantic_cases(
+            query_text TEXT,
+            embedding VECTOR,
+            top_n INT,
+            consider_n INT
+        )
+        RETURNS TABLE (
+            id               TEXT,
+            case_name        TEXT,
+            date             TEXT,
+            data             JSONB,
+            vector_rank      BIGINT,
+            semantic_rank    BIGINT,
             relevance        DOUBLE PRECISION
         ) AS $_$
         BEGIN
@@ -335,64 +479,24 @@ async def create_plpgsql_functions(session, app_identity_name):
                 FROM vector
                 JOIN semantic ON vector.vector_rank = semantic.ordinality
                 ORDER BY semantic.relevance DESC
-            ),      
-            graph_query AS (
-                SELECT * FROM ag_catalog.cypher('case_graph', 
-                    $$ MATCH (s)-[r:REF]->(n) RETURN n.case_id AS case_id, s.case_id AS ref_id $$
-                ) AS (case_id TEXT, ref_id TEXT)
-            ),
-            graph AS (
-                SELECT subquery.id, COUNT(ref_id) AS refs
-                FROM (
-                    SELECT semantic_ranked.id, graph_query.ref_id, c2.description_vector <=> embedding AS ref_cosine
-                    FROM semantic_ranked
-                    LEFT JOIN graph_query
-                    ON semantic_ranked.id = graph_query.case_id
-                    LEFT JOIN cases_updated c2
-                    ON c2.id = graph_query.ref_id
-                    WHERE semantic_ranked.semantic_rank <= 25
-                    ORDER BY ref_cosine
-                    LIMIT 200
-                ) AS subquery
-                GROUP BY subquery.id
-            ),
-            graph2 AS (
-                SELECT semantic_ranked.*, graph.refs 
-                FROM semantic_ranked
-                LEFT JOIN graph ON semantic_ranked.id = graph.id
-            ),
-            graph_ranked AS (
-                SELECT RANK() OVER (ORDER BY COALESCE(graph2.refs, 0) DESC) AS graph_rank, graph2.*
-                FROM graph2
-                ORDER BY graph_rank DESC
-            ),
-            rrf AS (
-                SELECT
-                    gold_dataset.label,
-                    COALESCE(1.0 / (60 + graph_ranked.graph_rank), 0.0) +
-                    COALESCE(1.0 / (60 + graph_ranked.semantic_rank), 0.0) AS score,
-                    graph_ranked.*
-                FROM graph_ranked
-                LEFT JOIN gold_dataset ON graph_ranked.id = gold_dataset.gold_id
             )
             SELECT 
-                rrf.label, rrf.score, rrf.graph_rank, rrf.semantic_rank, rrf.vector_rank, rrf.id, rrf.case_name, rrf.date, rrf.data, rrf.refs, rrf.relevance
-            FROM rrf
-            ORDER BY 
-                CASE 
-                    WHEN sort_option = 'vector_rank' THEN rrf.vector_rank
-                    WHEN sort_option = 'semantic_rank' THEN rrf.semantic_rank
-                END ASC,
-                CASE 
-                    WHEN sort_option = 'score' THEN rrf.score
-                END DESC
+                semantic_ranked.id, 
+                semantic_ranked.case_name, 
+                semantic_ranked.date, 
+                semantic_ranked.data, 
+                semantic_ranked.vector_rank, 
+                semantic_ranked.semantic_rank, 
+                semantic_ranked.relevance
+            FROM semantic_ranked
+            ORDER BY semantic_rank
             LIMIT top_n;
         END;
         $_$ LANGUAGE plpgsql;
     """)
-    await session.execute(function_graphrag)
+    await session.execute(function_semantic)
     await session.commit()
-    logger.info("Function get_vector_semantic_graphrag_optimized defined successfully.")
+    logger.info("Function get_vector_semantic_cases defined successfully.")
 
     function_age = text("""
         CREATE OR REPLACE FUNCTION initialize_age_extension()
@@ -405,7 +509,7 @@ async def create_plpgsql_functions(session, app_identity_name):
 
             BEGIN
                 SELECT * FROM cypher('case_graph', $$
-                    MATCH ()-[r:REF]->()
+                    MATCH ()-[r:CITES]->()
                     RETURN COUNT(r) AS cites_count
                 $$) AS (cites_count agtype);
             EXCEPTION WHEN OTHERS THEN
@@ -416,7 +520,7 @@ async def create_plpgsql_functions(session, app_identity_name):
             -- Execute the second cypher statement with error handling
             BEGIN
                 SELECT * FROM cypher('case_graph', $$
-                    MATCH ()-[r:REF]->()
+                    MATCH ()-[r:CITES]->()
                     RETURN COUNT(r) AS cites_count
                 $$) AS (cites_count agtype);
             EXCEPTION WHEN OTHERS THEN
@@ -430,42 +534,6 @@ async def create_plpgsql_functions(session, app_identity_name):
     await session.execute(function_age)
     await session.commit()
     logger.info("Function initialize_age_extension defined successfully.")
-
-    await session.execute(text("DROP FUNCTION IF EXISTS create_case_in_case_graph;"))
-    await session.commit()
-    create_case_in_case_graph = text("""
-        CREATE OR REPLACE FUNCTION create_case_in_case_graph(case_id text)
-        RETURNS void
-        LANGUAGE plpgsql
-        VOLATILE
-        AS $BODY$
-        BEGIN
-            SET search_path = ag_catalog, "$user", public;
-            EXECUTE format('SELECT * FROM cypher(''case_graph'', $$CREATE (\:case {case_id\: %s})$$) AS (a agtype);', quote_ident(case_id));
-        END
-        $BODY$;
-    """)
-    await session.execute(create_case_in_case_graph)
-    await session.commit()
-    logger.info("Function create_case_in_case_graph defined successfully.")
-
-    await session.execute(text("DROP FUNCTION IF EXISTS create_case_link_in_case_graph;"))
-    await session.commit()
-    create_case_link_in_case_graph = text("""
-        CREATE OR REPLACE FUNCTION create_case_link_in_case_graph(id_from text, id_to text)
-        RETURNS void
-        LANGUAGE plpgsql
-        VOLATILE
-        AS $BODY$
-        BEGIN
-            SET search_path = ag_catalog, "$user", public;
-            EXECUTE format('SELECT * FROM cypher(''case_graph'', $$MATCH (a:case), (b:case) WHERE a.case_id = %s AND b.case_id = %s CREATE (a)-[e:REF]->(b) RETURN e$$) AS (a agtype);', quote_ident(id_from), quote_ident(id_to));
-        END
-        $BODY$;
-    """)
-    await session.execute(create_case_link_in_case_graph)
-    await session.commit()
-    logger.info("Function create_case_link_in_case_graph defined successfully.")
 
 
 def sanitize_case_text(text):

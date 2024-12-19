@@ -29,7 +29,7 @@ def configure_age(conn, app_identity_name):
         logger.info("Executing first MATCH query...")
         cur.execute(
             """SELECT * FROM cypher('case_graph', $$ 
-                                    MATCH ()-[r:REF]->() 
+                                    MATCH ()-[r:CITES]->() 
                                     RETURN COUNT(r) AS cites_count 
                                     $$) AS (cites_count agtype);"""
         )
@@ -39,7 +39,7 @@ def configure_age(conn, app_identity_name):
         logger.info("Executing second MATCH query...")
         cur.execute(
             """SELECT * FROM cypher('case_graph', $$ 
-                                    MATCH ()-[r:REF]->() 
+                                    MATCH ()-[r:CITES]->() 
                                     RETURN COUNT(r) AS cites_count 
                                     $$) AS (cites_count agtype);"""
         )
@@ -49,12 +49,16 @@ def configure_age(conn, app_identity_name):
 
 
 def main():
+    # Fetch environment variables
     host = os.getenv("POSTGRES_HOST")
-    username = "legalcaseadmin"
+    username = os.getenv("POSTGRES_ADMIN")
     database = os.getenv("POSTGRES_DATABASE")
     sslmode = os.getenv("POSTGRES_SSLMODE", "require")  # Default to 'require' SSL mode
     app_identity_name = os.getenv("APP_IDENTITY_NAME")
-    password = os.getenv("POSTGRES_ADMIN_LOGIN_KEY")
+
+    filepath = os.path.join(os.path.dirname(__file__), "postgres_token.txt")
+    with open(filepath) as file:
+        password = file.read().strip()
 
     # Ensure environment variables are set
     if not all([host, username, password, database, app_identity_name]):
@@ -65,7 +69,6 @@ def main():
     if sslmode.lower() in ["require", "verify-ca", "verify-full"]:
         sslmode_params["sslmode"] = sslmode
 
-    conn = None
     try:
         # Connect to PostgreSQL using psycopg2
         conn = psycopg2.connect(

@@ -93,22 +93,8 @@ class Case(Base):
         """
         Converts Case to a string representation for Retrieval-Augmented Generation (RAG) usage.
         """
-        # data_fields = " ".join([f"{key}:{value}" for key, value in self.data.items()])
-        # return f"ID: {self.id} Data: {data_fields}"
-        casebody_text = self.data.get("casebody", {}).get("opinions", [{}])[0].get("text", "")
-        truncated_text = casebody_text[:800]  # Truncate to 800 characters
-
-        # Include truncated data alongside other fields if necessary
-        data_fields = [
-            f"{key}:{value}"
-            for key, value in self.data.items()
-            if key != "casebody"  # Exclude the large 'casebody' field
-        ]
-        data_fields.append(f"casebody_opinion_text:{truncated_text}")
-
-        # Join the fields into a single string
-        data_str = " ".join(data_fields)
-        return f"ID: {self.id} Data: {data_str}"
+        data_fields = " ".join([f"{key}:{value}" for key, value in self.data.items()])
+        return f"ID: {self.id} Data: {data_fields}"
 
     def to_str_for_embedding(self):
         """

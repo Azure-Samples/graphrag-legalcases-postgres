@@ -260,10 +260,6 @@ var webAppEnv = union(azureOpenAIKeyEnv, openAIComKeyEnv, [
     value: postgresServer.outputs.POSTGRES_DOMAIN_NAME
   }
   {
-    name: 'POSTGRES_ADMIN_LOGIN_KEY'
-    value: postgresServer.outputs.POSTGRES_ADMIN_LOGIN_KEY
-  }
-  {
     name: 'POSTGRES_USERNAME'
     value: webAppIdentityName
   }

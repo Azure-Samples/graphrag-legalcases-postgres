@@ -16,12 +16,12 @@ services:
             prebuild:
                 windows:
                     shell: pwsh
-                    run:  cd ../frontend;npm install;npm run build
+                    run: cd ../frontend;npm install;npm run build
                     interactive: false
                     continueOnError: false
                 posix:
                     shell: sh
-                    run:  cd ../frontend;npm install;npm run build
+                    run: cd ../frontend;npm install;npm run build
                     interactive: false
                     continueOnError: false
 hooks:
