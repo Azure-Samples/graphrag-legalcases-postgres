@@ -394,6 +394,136 @@ async def create_plpgsql_functions(session, app_identity_name):
     await session.commit()
     logger.info("Function get_vector_semantic_graphrag_optimized defined successfully.")
 
+    function_msr_graphrag_combined = text("""
+        CREATE OR REPLACE FUNCTION get_msr_graphrag_combined(
+            query_text TEXT,
+            embedding VECTOR,
+            top_n INT
+        )
+        RETURNS TABLE (
+            label            TEXT,
+            score            NUMERIC,
+            graph_rank       BIGINT,
+            semantic_rank    BIGINT,
+            vector_rank      BIGINT,
+            id               TEXT,
+            case_name        TEXT,
+            date             TEXT,
+            data             JSONB,
+            relevance        DOUBLE PRECISION
+        ) AS $_$
+        BEGIN
+            SET search_path = ag_catalog, "$user", public;
+
+            RETURN QUERY
+            WITH msr_graphrag as (SELECT 
+                fcr.full_content_vector <=> embedding AS similarity_score,
+                ROW_NUMBER() OVER (
+                    PARTITION BY ftd.id
+                    ORDER BY fcr.full_content_vector <=> embedding ASC
+                ) AS partition_rank,
+                fcr.id AS report_id,
+                ftd.id AS document_id,
+                ftd.title AS document_title
+            FROM 
+                final_community_reports fcr
+            JOIN 
+                final_communities fc ON fcr.community = fc.community
+            JOIN 
+                final_text_units ftu ON ftu.id = ANY(fc.text_unit_ids)
+            JOIN 
+                final_documents ftd ON ftd.id = ANY(ftu.document_ids)
+            WHERE fcr.level = 2
+            ),
+            vector AS (
+                SELECT cu.id,
+                    cu.data#>>'{name_abbreviation}' AS case_name,
+                    cu.data#>>'{decision_date}' AS date,
+                    cu.data,
+                    RANK() OVER (ORDER BY description_vector <=> embedding) AS vector_rank
+                FROM cases_updated cu
+                WHERE (cu.data#>>'{court, id}')::integer IN (9029)
+                ORDER BY description_vector <=> embedding
+            ),
+            combined_scores AS (
+                SELECT 
+                    vector.id,
+                    vector.case_name,
+                    vector.date,
+                    vector.data,
+                    vector.vector_rank,
+                    msr_graphrag.similarity_score,
+                    COALESCE(1.0 / (60 + msr_graphrag.similarity_score), 0.0) + 
+                    COALESCE(1.0 / (60 + vector.vector_rank), 0.0) AS combined_score
+                FROM msr_graphrag
+                INNER JOIN vector ON vector.id = msr_graphrag.document_id
+                WHERE msr_graphrag.partition_rank = 1
+            ), 
+            ranked_combined_scores AS (
+                SELECT 
+                    combined_scores.*,
+                    RANK() OVER (
+                        ORDER BY combined_scores.combined_score DESC
+                    ) AS graph_rank
+                FROM 
+                    combined_scores
+            ), 
+            json_payload AS (
+                SELECT jsonb_build_object(
+                        'pairs', 
+                        jsonb_agg(
+                            jsonb_build_array(
+                                query_text,
+                                LEFT(ranked_combined_scores.data -> 'casebody' -> 'opinions' -> 0 ->> 'text', 800)
+                            )
+                        )
+                    ) AS json_pairs
+                    FROM ranked_combined_scores
+            ),
+            semantic AS (
+                SELECT 
+                    elem.relevance::DOUBLE PRECISION AS relevance,
+                    elem.ordinality
+                FROM 
+                    json_payload AS jp,
+                    LATERAL jsonb_array_elements(
+                        azure_ml.invoke(
+                            jp.json_pairs,
+                            deployment_name => 'bge-v2-m3-1',
+                            timeout_ms => 180000
+                        )
+                    ) WITH ORDINALITY AS elem(relevance)
+            ),
+            semantic_ranked AS (
+                SELECT 
+                    RANK() OVER (ORDER BY semantic.relevance DESC) AS semantic_rank,
+                    semantic.*, ranked_combined_scores.*
+                FROM 
+                    ranked_combined_scores
+                JOIN 
+                    semantic ON ranked_combined_scores.graph_rank = semantic.ordinality
+            ),
+            rrf AS (
+                SELECT
+                    gold_dataset.label,
+                    COALESCE(1.0 / (60 + semantic_ranked.graph_rank), 0.0) +
+                    COALESCE(1.0 / (60 + semantic_ranked.semantic_rank), 0.0) AS score,
+                    semantic_ranked.*
+                FROM semantic_ranked
+                LEFT JOIN gold_dataset ON semantic_ranked.id = gold_dataset.gold_id
+            )
+            SELECT 
+                rrf.label, rrf.score, rrf.graph_rank, rrf.semantic_rank, rrf.vector_rank, rrf.id, rrf.case_name, rrf.date, rrf.data, rrf.relevance
+            FROM rrf
+            ORDER BY rrf.score DESC
+            LIMIT top_n;
+        END;
+        $_$ LANGUAGE plpgsql;
+    """)
+    await session.execute(function_msr_graphrag_combined)
+    await session.commit()
+    logger.info("Function get_msr_graphrag_combined defined successfully.")
+
     function_age = text("""
         CREATE OR REPLACE FUNCTION initialize_age_extension()
         RETURNS void AS $_$

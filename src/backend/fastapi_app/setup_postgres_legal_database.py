@@ -14,7 +14,7 @@ logger = logging.getLogger("legalcaseapp")
 
 async def create_db_schema(engine):
     async with engine.begin() as conn:
-        # logger.info("Enabling azure_ai extension...")
+        logger.info("Enabling azure_ai extension...")
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS azure_ai"))
 
         logger.info("Enabling the pgvector extension for Postgres...")

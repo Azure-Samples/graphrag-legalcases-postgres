@@ -74,45 +74,68 @@ class PostgresSearcher:
 
         await self.db_session.execute(text('SET search_path = ag_catalog, "$user", public;'))
 
-        ranking_type_map = {
-            RetrievalMode.GRAPHRAG: "score",
-            RetrievalMode.SEMANTIC: "semantic_rank",
-            RetrievalMode.VECTOR: "vector_rank",
-        }
-
-        if retrieval_mode not in ranking_type_map:
-            raise ValueError("Invalid retrieval_mode. Options are: VECTOR, SEMANTIC, GRAPHRAG")
-
-        ranking_type = ranking_type_map[retrieval_mode]
-
-        function_call = f"""
-            SELECT * FROM get_vector_semantic_graphrag_optimized(
-                :query_text, 
-                CAST(:embedding AS vector(1536)), 
-                :top_n, 
-                :consider_n,
-                '{ranking_type}'
-            );
-        """
-
-        sql = text(function_call).columns(
-            column("rrf.id", String),
-        )
-
-        # Execute the query with the required parameters
-        await self.db_session.execute(text('SET search_path = ag_catalog, "$user", public;'))
-
-        results = (
-            await self.db_session.execute(
-                sql,
-                {
-                    "embedding": to_db(query_vector),
-                    "top_n": top,
-                    "consider_n": 60,
-                    "query_text": "Water leaking into the apartment from the floor above.",
-                },
+        if retrieval_mode == RetrievalMode.MSRGRAPHRAG:
+            function_call = """
+                SELECT * FROM get_msr_graphrag_combined(
+                    :query_text,
+                    CAST(:embedding AS vector(1536)),
+                    :top_n
+                );
+            """
+            sql = text(function_call).columns(
+                column("rrf.id", String),
             )
-        ).fetchall()
+
+            results = (
+                await self.db_session.execute(
+                    sql,
+                    {
+                        "query_text": "Water leaking into the apartment from the floor above.",
+                        "embedding": to_db(query_vector),
+                        "top_n": top,
+                    },
+                )
+            ).fetchall()
+        else:
+            ranking_type_map = {
+                RetrievalMode.GRAPHRAG: "score",
+                RetrievalMode.SEMANTIC: "semantic_rank",
+                RetrievalMode.VECTOR: "vector_rank",
+            }
+
+            if retrieval_mode not in ranking_type_map:
+                raise ValueError("Invalid retrieval_mode. Options are: VECTOR, SEMANTIC, GRAPHRAG")
+
+            ranking_type = ranking_type_map[retrieval_mode]
+
+            function_call = f"""
+                SELECT * FROM get_vector_semantic_graphrag_optimized(
+                    :query_text, 
+                    CAST(:embedding AS vector(1536)), 
+                    :top_n, 
+                    :consider_n,
+                    '{ranking_type}'
+                );
+            """
+
+            sql = text(function_call).columns(
+                column("rrf.id", String),
+            )
+
+            # Execute the query with the required parameters
+            await self.db_session.execute(text('SET search_path = ag_catalog, "$user", public;'))
+
+            results = (
+                await self.db_session.execute(
+                    sql,
+                    {
+                        "embedding": to_db(query_vector),
+                        "top_n": top,
+                        "consider_n": 60,
+                        "query_text": "Water leaking into the apartment from the floor above.",
+                    },
+                )
+            ).fetchall()
 
         if not results:
             return []  # Return an empty list if no results are found
@@ -120,10 +143,7 @@ class PostgresSearcher:
         # Convert results to SQLAlchemy models
         row_models = []
         for row in results[:top]:
-            if retrieval_mode == RetrievalMode.MSRGRAPHRAG:
-                id = row[1]  # Adjust if column names differ
-            else:
-                id = row.id
+            id = row.id
             # Fetch the corresponding row using the ID
             item = await self.db_session.execute(select(Case).where(Case.id == id))
             # logger.info(f"Item found: {item.scalar()}")
