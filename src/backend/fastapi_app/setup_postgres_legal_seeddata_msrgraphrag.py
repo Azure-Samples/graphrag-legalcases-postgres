@@ -6,10 +6,15 @@ import logging
 import os
 import sys
 
+import numpy as np
 from dotenv import load_dotenv
+from psycopg2.extensions import AsIs, register_adapter
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
+from fastapi_app.dependencies import get_azure_credential
+from fastapi_app.embeddings import compute_text_embedding
+from fastapi_app.openai_clients import create_openai_embed_client
 from fastapi_app.postgres_engine import create_postgres_engine_from_args, create_postgres_engine_from_env
 
 csv.field_size_limit(sys.maxsize)
@@ -236,6 +241,8 @@ async def initialize_final_community_reports_table(engine: AsyncEngine):
             full_content TEXT,
             rank TEXT,
             rank_explanation TEXT,
+            findings TEXT,
+            full_content_json TEXT,
             period TEXT,
             size TEXT,
             full_content_vector vector(1536)
@@ -244,20 +251,17 @@ async def initialize_final_community_reports_table(engine: AsyncEngine):
     query = text("""
         INSERT INTO final_community_reports (
             id, human_readable_id, community, level, title, summary, full_content,
-            rank, rank_explanation, period, size, full_content_vector
+            rank, rank_explanation, findings, full_content_json, period, size
         )
         VALUES (
             :id, :human_readable_id, :community, :level, :title, :summary, :full_content,
-            :rank, :rank_explanation, :period, :size, :full_content_vector
+            :rank, :rank_explanation, :findings, :full_content_json, :period, :size
         )
         ON CONFLICT (id) DO NOTHING
     """)
 
     def process_row(row):
         try:
-            full_content_vector = (
-                f"[{','.join(map(str, [float(x) for x in row['full_content_vector'].strip('[]').split(',')]))}]"
-            )
             return {
                 "id": row["id"],
                 "human_readable_id": row["human_readable_id"],
@@ -268,9 +272,10 @@ async def initialize_final_community_reports_table(engine: AsyncEngine):
                 "full_content": row["full_content"],
                 "rank": row["rank"],
                 "rank_explanation": row["rank_explanation"],
+                "findings": row["findings"],
+                "full_content_json": row["full_content_json"],
                 "period": row["period"],
                 "size": row["size"],
-                "full_content_vector": full_content_vector,
             }
         except (KeyError, ValueError, json.JSONDecodeError) as e:
             logger.error(f"Error processing row {row['id'] if 'id' in row else 'unknown'}: {e}")
@@ -279,6 +284,83 @@ async def initialize_final_community_reports_table(engine: AsyncEngine):
     async with AsyncSession(engine) as session:
         await create_table(session, table_name, schema)
         await initialize_table_from_csv(session, csv_file_path, table_name, query, process_row)
+
+
+async def generate_and_update_embeddings(engine: AsyncEngine):
+    """
+    Generate embeddings for `full_content` and update the `full_content_vector` column.
+    """
+    update_query = text("""
+        UPDATE final_community_reports
+        SET full_content_vector = :vector
+        WHERE id = :id
+    """)
+
+    select_query = text("""
+        SELECT id, full_content
+        FROM final_community_reports
+        WHERE full_content_vector IS NULL
+    """)
+
+    def addapt_vector(nparray):
+        """Adapt a numpy array to the PostgreSQL VECTOR type."""
+        vector_str = ",".join(map(str, nparray.tolist()))
+        return AsIs(f"'[{vector_str}]'::VECTOR")
+
+    def adapt_vector(nparray):
+        """Adapt a numpy array to the PostgreSQL VECTOR type."""
+        return f"[{','.join(map(str, nparray.tolist()))}]"
+
+    register_adapter(np.ndarray, addapt_vector)
+
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            print("Generating embeddings and updating the database...")
+            result = await session.execute(select_query)
+            rows = result.fetchall()
+
+            print(f"Found {len(rows)} rows to process.")
+
+            for row in rows:
+                try:
+                    # Generate embeddings for `full_content`
+                    azure_credential = await get_azure_credential()
+                    openai_embed_client = await create_openai_embed_client(azure_credential)
+
+                    embedding = await compute_text_embedding(
+                        row[1],
+                        openai_client=openai_embed_client,
+                        embed_model="text-embedding-3-small",
+                        embed_deployment="text-embedding-3-small",
+                        embedding_dimensions=1536,
+                    )
+
+                    fcv = np.array(embedding)
+                    if fcv is not None:
+                        # Update the `full_content_vector` column
+                        vector_str = adapt_vector(fcv)
+                        await session.execute(
+                            update_query,
+                            {"vector": vector_str, "id": row[0]},
+                        )
+                except Exception as e:
+                    logger.error(f"Error generating embeddings for row ID {row[0]}: {e}")
+            await session.commit()
+
+
+async def create_hnsw_index(engine: AsyncEngine):
+    """
+    Create the HNSW index on the `full_content_vector` column.
+    """
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            create_index_query = text("""
+                CREATE INDEX IF NOT EXISTS idx_full_content_vector ON final_community_reports
+                USING hnsw (full_content_vector vector_cosine_ops);
+            """)
+            await session.execute(create_index_query)
+            await session.commit()
+            logger.info("HNSW index on `full_content_vector` created successfully.")
 
 
 async def main():
@@ -300,6 +382,8 @@ async def main():
     await initialize_final_text_units_table(engine)
     await initialize_final_communities_table(engine)
     await initialize_final_community_reports_table(engine)
+    await generate_and_update_embeddings(engine)
+    await create_hnsw_index(engine)
     await engine.dispose()
 
 
