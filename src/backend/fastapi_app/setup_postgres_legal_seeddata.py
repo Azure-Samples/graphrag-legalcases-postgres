@@ -16,7 +16,7 @@ from fastapi_app.postgres_engine import (
 )
 
 # Increase the field size limit
-csv.field_size_limit(sys.maxsize)
+csv.field_size_limit(2147483647)
 
 logger = logging.getLogger("legalcaseapp")
 

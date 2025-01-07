@@ -50,7 +50,7 @@ The steps below guides you to deploy the Azure services necessary for this solut
 
 👉 Once you deploy this accelerator, notate the `"/score"` REST endpoint URI and the key.  You will need these in the steps below when deploying.
 
-### Deployment Steps
+### Deployment Steps For using Posix (sh) 
 1. Enter the following to clone the GitHub repo containing exercise resources:
     ```bash
     git clone https://github.com/Azure-Samples/graphrag-legalcases-postgres.git
@@ -67,6 +67,7 @@ The steps below guides you to deploy the Azure services necessary for this solut
     AZURE_ML_SCORING_ENDPOINT={YOUR-AZURE-ML-ENDPOINT}
     AZURE_ML_ENDPOINT_KEY={YOUR-AZURE-ML-ENDPOINT-KEY}
     ```
+    - Provide other AZURE_OPENAI related keys as well in your .env file.
 4. Login to your Azure account
     ```bash
     azd auth login
@@ -77,6 +78,29 @@ The steps below guides you to deploy the Azure services necessary for this solut
     ```
     - Enter a name that will be used for the resource group.    
     - This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure Container App Service.
+
+### Deployment Steps For using Windows (pwsh)
+
+We recommend and have targeted the use of the sh shell. You can run the provided devcontainer setup by pressing CTRL + Shift + P in Visual Studio Code and selecting the 'Dev Containers: Rebuild and Reopen in Container' option. This will give you access to an sh shell for your work even if you are using a Windows environment.
+
+However, if you prefer to use your Windows environment directly with pwsh instead, you’ll need to follow these steps:
+
+1. Install azd (https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd?tabs=winget-windows%2Cbrew-mac%2Cscript-linux&pivots=os-windows)
+
+2. Install PowerShell (PowerShell-7.4.6-win-x64.msi-> https://github.com/PowerShell/PowerShell/releases/tag/v7.4.6)
+
+3. Install Rust (rustup-init.exe ->https://rustup.rs/)
+
+4. Install Python 3.12 (Windows installer (64-bit)-> https://www.python.org/downloads/release/python-3120/)
+
+5. Install Node.js (https://nodejs.org/en). 
+
+After that, you need to open a new terminal and run these two commands manually. Please note that for Linux it is not required to run these manually, only for Windows, you need to run:
+```
+pip install -r requirements-dev.txt
+pip install -e src/backend
+```
+After completing the above steps, you need to follow the steps provided in [Deployment Steps For using Posix (sh)](#deployment-steps-for-using-posix-sh) above.
 
 ## Contributing
 

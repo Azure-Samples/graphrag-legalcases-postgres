@@ -11,5 +11,15 @@ pytest-cov
 pytest-playwright
 pytest-snapshot
 locust
-git+https://github.com/Azure-Samples/ai-rag-chat-evaluator/@installable
+requests
+python-dotenv
+azure-ai-generative[evaluate]==1.0.0b8
+azure-ai-evaluation==1.0.0b3
+azure-search-documents
+typer
+openai>=1.0.0
+pandas
+rich
+jmespath
+textual
 psycopg2

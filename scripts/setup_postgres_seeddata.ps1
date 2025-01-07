@@ -13,4 +13,3 @@ if ([string]::IsNullOrEmpty($POSTGRES_HOST) -or [string]::IsNullOrEmpty($POSTGRE
 }
 
 python ./src/backend/fastapi_app/setup_postgres_legal_seeddata.py --host $POSTGRES_HOST --username $POSTGRES_USERNAME --database $POSTGRES_DATABASE  --app-identity-name $APP_IDENTITY_NAME
-python ./src/backend/fastapi_app/setup_postgres_legal_seeddata_msrgraphrag.py --host $POSTGRES_HOST --username $POSTGRES_USERNAME --database $POSTGRES_DATABASE
