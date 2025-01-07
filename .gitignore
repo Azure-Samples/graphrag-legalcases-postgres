@@ -11,3 +11,4 @@ __pycache__/
 *.js.map
 *.pyc
 src/backend/static/assets/*
+graphrag/
