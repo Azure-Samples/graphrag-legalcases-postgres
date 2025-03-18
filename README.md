@@ -19,9 +19,9 @@ As the architecture diagram shows, this solution accelerator brings together **v
 <details>
   <summary><b>GraphRAG</b></summary>
     An advanced RAG technique proposed by Microsoft Research to improve quality of RAG system responses by extracting knowledge graph from the source data and leveraging it to provide better context to the LLM. The GraphRAG technique consists of three high level steps:
-    1. Graph extraction 
-    2. Entity summarization 
-    3. Graph query generation at query time 
+    1. Graph extraction
+    2. Entity summarization
+    3. Graph query generation at query time
 </details>
 
 <details>
@@ -50,15 +50,15 @@ The steps below guides you to deploy the Azure services necessary for this solut
 
 👉 Once you deploy this accelerator, notate the `"/score"` REST endpoint URI and the key.  You will need these in the steps below when deploying.
 
-### Deployment Steps For using Posix (sh) 
+### Deployment Steps For using Posix (sh)
 1. Enter the following to clone the GitHub repo containing exercise resources:
     ```bash
     git clone https://github.com/Azure-Samples/graphrag-legalcases-postgres.git
     cd graphrag-legalcases-postgres
     ```
 2. Use sample .env to create your own .env
-    ```bash    
-    cp .env.sample .env    
+    ```bash
+    cp .env.sample .env
     ```
 3. Edit your new .env file to add your Azure ML Semantic Ranker endpoints
     - Use the values obtained during the Prerequisite Steps above.
@@ -76,7 +76,7 @@ The steps below guides you to deploy the Azure services necessary for this solut
     ```bash
     azd up
     ```
-    - Enter a name that will be used for the resource group.    
+    - Enter a name that will be used for the resource group.
     - This will provision Azure resources and deploy this sample to those resources, including Azure Database for PostgreSQL Flexible Server, Azure OpenAI service, and Azure Container App Service.
 
 
@@ -94,7 +94,7 @@ However, if you prefer to use your Windows environment directly with pwsh instea
 
 4. Install Python 3.12 (Windows installer (64-bit)-> https://www.python.org/downloads/release/python-3120/)
 
-5. Install Node.js (https://nodejs.org/en). 
+5. Install Node.js (https://nodejs.org/en).
 
 After that, you need to open a new terminal and run these two commands manually. Please note that for Linux it is not required to run these manually, only for Windows, you need to run:
 ```
@@ -156,7 +156,7 @@ CREATE TABLE cases_filtered (
 
 
 INSERT INTO cases_filtered (id, name, court_id, court_name, description)
-SELECT 
+SELECT
     id,
     data->>'name' AS name,
     (data->'court'->>'id') AS court_id,
@@ -172,9 +172,9 @@ To generate the required CSV file, run the following SQL command inside your Pos
 
 ```sql
 COPY (
-    SELECT id, name, court_id, court_name, description 
+    SELECT id, name, court_id, court_name, description
     FROM demo_cases_filtered
-) TO '/home/postgres/cases_filtered_final.csv' 
+) TO '/home/postgres/cases_filtered_final.csv'
 WITH CSV HEADER;
 ```
 
@@ -191,16 +191,16 @@ Replace `<container-name>` with the actual name of your running PostgreSQL conta
 
 Ensure that the file `cases_filtered_final.csv` is correctly placed inside `./graphrag/input/` before running the GraphRAG library.
 
-### 2. Install Dependencies
+### 5. Install Dependencies
 Activate the Poetry environment by running:
 ```
-poetry shell  
+poetry shell
 poetry install
 ```
 This will install the necessary dependencies to use the `graphrag` command.
 
 
-### 3. Initialize the Folder
+### 6. Initialize the Folder
 Initialize the folder with the following command:
 ```
 graphrag init --root ./graphrag
@@ -208,23 +208,23 @@ graphrag init --root ./graphrag
 This will create the required files for the process.
 
 
-### 4. Configure API Keys and Settings
+### 7. Configure API Keys and Settings
 - Provide your `GRAPHRAG_API_KEY` in the `.env` file, depending on the OpenAI model type you are using.
 - Update the `settings.yaml` file with the following configuration with your data columns instead:
 
 
 ```
-input:  
-  type: file  # or 'blob'  
-  file_type: csv  # or 'text'  
-  base_dir: "input"  
-  file_encoding: utf-8  
-  file_pattern: ".*\\.csv$"  
-  source_column: id  
-  text_column: description  
-  title_column: name  
-  document_attribute_columns:  
-    - court_id  
+input:
+  type: file  # or 'blob'
+  file_type: csv  # or 'text'
+  base_dir: "input"
+  file_encoding: utf-8
+  file_pattern: ".*\\.csv$"
+  source_column: id
+  text_column: description
+  title_column: name
+  document_attribute_columns:
+    - court_id
     - court_name
 ```
 
@@ -258,13 +258,13 @@ embeddings:
     deployment_name: text-embedding-3-small
 ```
 
-### 5. Run Auto-Tuning for Prompts
+### 8. Run Auto-Tuning for Prompts
 Auto-tune your prompts according to your data by running:
 ```
 python -m graphrag prompt-tune --root ./graphrag/ --config ./graphrag/settings.yaml --no-discover-entity-types --output ./graphrag/prompts/
 ```
 
-### 6. Run the Indexing Process
+### 9. Run the Indexing Process
 Begin the indexing process for your knowledge graph with:
 ```
 graphrag index --root ./graphrag
@@ -272,7 +272,7 @@ graphrag index --root ./graphrag
 This process may take about an hour to complete, depending on your rate limits.
 
 
-### 7. Convert Parquet Files to CSV
+### 10. Convert Parquet Files to CSV
 After indexing, use the `notebook.ipynb` file to convert the following Parquet files to CSV and save them in the `data` folder:
 - `final_documents`
 - `final_text_units`
@@ -280,8 +280,8 @@ After indexing, use the `notebook.ipynb` file to convert the following Parquet f
 - `final_community_reports`
 Once the CSV files are in the `data` folder, proceed to the next step to create additional vector fields and generate embeddings.
 
-### 8. Generate embeddings
-Embeddings need to be generated during post-provisioning to modify the CSV files for `final_text_units` and `final_community_reports`. 
+### 11. Generate embeddings
+Embeddings need to be generated during post-provisioning to modify the CSV files for `final_text_units` and `final_community_reports`.
 
 Before running the initial deployment, set the RUN_POST_EMBEDDING parameter to `true` in the `scripts/setup_postgres_seeddata.sh` file. This ensures that new fields are created and embeddings are generated. Then, execute:
 ```
@@ -290,7 +290,7 @@ azd up
 Once the tables with embeddings are generated, convert them into CSV files and place them in the `data` folder. This will speed up future deployments.
 
 
-### 9. Deploy Your Project
+### 12. Deploy Your Project
 Finally, after generating the embeddings and saving them in CSV format, update the RUN_POST_EMBEDDING parameter to `false` in the `scripts/setup_postgres_seeddata.sh` file to prevent redundant processing.
 
 Run the following command to complete the deployment:
